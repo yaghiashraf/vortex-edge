@@ -38,18 +38,13 @@ async function tryFetchYahoo(symbol: string, range: string): Promise<any> {
 
       const meta = result.meta;
       const currentPrice = meta.regularMarketPrice;
-      // previousClose = yesterday's close (always daily, regardless of chart range)
-      // chartPreviousClose = close before the chart range starts (depends on range param)
-      const prevClose = meta.previousClose || meta.chartPreviousClose;
+      if (!currentPrice) continue;
 
-      if (!currentPrice || !prevClose) continue;
-
-      const dailyChange = ((currentPrice - prevClose) / prevClose) * 100;
       const volume = meta.regularMarketVolume || 0;
 
+      // Build candle array
       const timestamps = result.timestamp || [];
       const quote = result.indicators?.quote?.[0] || {};
-
       const candles = timestamps.map((ts: number, i: number) => ({
         date: new Date(ts * 1000),
         open: quote.open?.[i] || 0,
@@ -58,6 +53,19 @@ async function tryFetchYahoo(symbol: string, range: string): Promise<any> {
         close: quote.close?.[i] || 0,
         volume: quote.volume?.[i] || 0,
       })).filter((c: any) => c.close > 0);
+
+      // Calculate daily change from candle data - this is the ONLY reliable method.
+      // candles[-1] = today (or most recent trading day)
+      // candles[-2] = yesterday (or prior trading day)
+      // Daily change = (currentPrice - yesterday's close) / yesterday's close * 100
+      let dailyChange = 0;
+      if (candles.length >= 2) {
+        const yesterdayClose = candles[candles.length - 2].close;
+        dailyChange = ((currentPrice - yesterdayClose) / yesterdayClose) * 100;
+      } else if (meta.chartPreviousClose) {
+        // Fallback only if we have just 1 candle
+        dailyChange = ((currentPrice - meta.chartPreviousClose) / meta.chartPreviousClose) * 100;
+      }
 
       return {
         symbol,
@@ -74,7 +82,6 @@ async function tryFetchYahoo(symbol: string, range: string): Promise<any> {
 }
 
 export async function fetchYahooData(symbol: string, range: string = '1mo') {
-  // First attempt
   const result = await tryFetchYahoo(symbol, range);
   if (result) return result;
 

@@ -14,6 +14,7 @@ interface Opportunity {
   trend: 'Up' | 'Down';
   rvol?: number;
   atr?: number;
+  atrPct?: number;
   zScore?: number;
 }
 
@@ -22,7 +23,7 @@ interface Props {
   isLoading: boolean;
 }
 
-type SortKey = 'symbol' | 'price' | 'trend' | 'rsi' | 'rvol' | 'atr' | 'zScore' | 'setup';
+type SortKey = 'symbol' | 'price' | 'trend' | 'rsi' | 'rvol' | 'atrPct' | 'zScore' | 'setup';
 type SortDirection = 'asc' | 'desc';
 
 export default function ScannerTable({ data, isLoading }: Props) {
@@ -32,7 +33,7 @@ export default function ScannerTable({ data, isLoading }: Props) {
   });
 
   const handleSort = (key: SortKey) => {
-    let direction: SortDirection = 'desc'; 
+    let direction: SortDirection = 'desc';
     if (sortConfig.key === key && sortConfig.direction === 'desc') {
       direction = 'asc';
     }
@@ -41,32 +42,26 @@ export default function ScannerTable({ data, isLoading }: Props) {
 
   const sortedData = useMemo(() => {
     if (!data) return [];
-    
+
     return [...data].sort((a, b) => {
       let aVal: any;
       let bVal: any;
 
       if (sortConfig.key === 'setup') {
-        // Scoring Algorithm for "Best Setup"
         const score = (item: Opportunity) => {
           let s = 0;
-          // Core Patterns
           if (item.isInsideBar) s += 10;
           if (item.isNR7) s += 10;
-          
-          // Confluence Boosters
           if (item.rvol && item.rvol > 1.2) s += 5;
           if (item.rsi && (item.rsi > 70 || item.rsi < 30)) s += 5;
           if (item.zScore && Math.abs(item.zScore) > 2) s += 3;
-          
           return s;
         };
         aVal = score(a);
         bVal = score(b);
       } else {
-        const propKey = keyToProp(sortConfig.key);
-        aVal = a[propKey as keyof Opportunity];
-        bVal = b[propKey as keyof Opportunity];
+        aVal = a[sortConfig.key as keyof Opportunity];
+        bVal = b[sortConfig.key as keyof Opportunity];
       }
 
       if (aVal === undefined || aVal === null) aVal = -Infinity;
@@ -78,9 +73,8 @@ export default function ScannerTable({ data, isLoading }: Props) {
     });
   }, [data, sortConfig]);
 
-  // Loading State (handled by parent mostly, but good for empty state)
   if (isLoading && data.length === 0) {
-    return null; // Don't show empty skeleton if we have a parent loading overlay
+    return null;
   }
 
   return (
@@ -93,6 +87,7 @@ export default function ScannerTable({ data, isLoading }: Props) {
             <SortHeader label="TREND" sortKey="trend" currentSort={sortConfig} onSort={handleSort} align="center" />
             <SortHeader label="RSI(14)" sortKey="rsi" currentSort={sortConfig} onSort={handleSort} align="center" />
             <SortHeader label="RVOL" sortKey="rvol" currentSort={sortConfig} onSort={handleSort} align="center" />
+            <SortHeader label="ATR%" sortKey="atrPct" currentSort={sortConfig} onSort={handleSort} align="center" />
             <SortHeader label="Z-SCORE" sortKey="zScore" currentSort={sortConfig} onSort={handleSort} align="center" />
             <SortHeader label="SETUP / SIGNAL" sortKey="setup" currentSort={sortConfig} onSort={handleSort} align="left" paddingLeft="pl-4" />
             <th className="px-3 py-2 uppercase font-normal text-right text-zinc-400 border-b border-orange-500/30 pr-4 cursor-default">VOL (M)</th>
@@ -104,17 +99,17 @@ export default function ScannerTable({ data, isLoading }: Props) {
             const isRsiLow = item.rsi && item.rsi < 30;
             const isHighRvol = item.rvol && item.rvol > 1.2;
             const isZScoreExtreme = item.zScore && Math.abs(item.zScore) > 2;
-            
+            const isHighAtrPct = item.atrPct && item.atrPct > 3;
+
             const isPattern = item.isInsideBar || item.isNR7;
             const isConfluence = isPattern && (isHighRvol || isRsiHigh || isRsiLow);
 
-            // Row Styling
             let bgClass = idx % 2 === 0 ? 'bg-zinc-950/30' : 'bg-black';
             let borderClass = 'border-b border-zinc-900/30';
             let textClass = 'text-zinc-300';
-            
+
             if (isConfluence) {
-              bgClass = 'bg-indigo-950/30 hover:bg-indigo-900/40'; // Special Super Setup
+              bgClass = 'bg-indigo-950/30 hover:bg-indigo-900/40';
               textClass = 'text-indigo-100 font-bold';
             } else if (isPattern) {
               bgClass = 'bg-orange-950/20 hover:bg-orange-900/30';
@@ -123,27 +118,26 @@ export default function ScannerTable({ data, isLoading }: Props) {
 
             return (
               <tr key={item.symbol} className={`${bgClass} hover:bg-zinc-900 transition-colors cursor-default group h-8 relative`}>
-                {/* Ticker Cell */}
                 <td className={`px-3 py-1 font-bold border-r border-zinc-900/50 ${borderClass} relative ${isConfluence ? 'text-indigo-400' : isPattern ? 'text-orange-400' : 'text-zinc-400'}`}>
                   {isConfluence && <div className="absolute left-0 top-0 bottom-0 w-1 bg-indigo-500 animate-pulse"></div>}
                   {!isConfluence && isPattern && <div className="absolute left-0 top-0 bottom-0 w-1 bg-orange-500"></div>}
                   {item.symbol}
                 </td>
-                
+
                 <td className={`px-3 py-1 text-right border-r border-zinc-900/50 tabular-nums ${textClass} ${borderClass}`}>
                   {item.price.toFixed(2)}
                 </td>
-                
+
                 <td className={`px-3 py-1 text-center border-r border-zinc-900/50 ${borderClass}`}>
                   <span className={item.trend === 'Up' ? 'text-green-500 font-bold' : 'text-red-500 font-bold'}>
                     {item.trend === 'Up' ? '▲' : '▼'}
                   </span>
                 </td>
-                
+
                 <td className={`px-3 py-1 text-center border-r border-zinc-900/50 tabular-nums ${borderClass}`}>
                   <span className={`px-1 rounded-sm ${
-                    isRsiHigh ? 'bg-red-900/50 text-red-200 font-bold' : 
-                    isRsiLow ? 'bg-green-900/50 text-green-200 font-bold' : 
+                    isRsiHigh ? 'bg-red-900/50 text-red-200 font-bold' :
+                    isRsiLow ? 'bg-green-900/50 text-green-200 font-bold' :
                     'text-zinc-500'
                   }`}>
                     {item.rsi?.toFixed(0) || '--'}
@@ -156,30 +150,34 @@ export default function ScannerTable({ data, isLoading }: Props) {
                   </span>
                 </td>
 
+                {/* ATR% — Expected daily range as % of price. >3% = high volatility (day-tradeable). */}
+                <td className={`px-3 py-1 text-center border-r border-zinc-900/50 tabular-nums ${borderClass}`}>
+                  <span className={`font-bold ${isHighAtrPct ? 'text-amber-400' : 'text-zinc-600'}`}>
+                    {item.atrPct ? item.atrPct.toFixed(1) + '%' : '-'}
+                  </span>
+                </td>
+
                 <td className={`px-3 py-1 text-center border-r border-zinc-900/50 tabular-nums ${borderClass}`}>
                    <span className={`${isZScoreExtreme ? 'text-purple-400 font-bold' : 'text-zinc-600'}`}>
                      {item.zScore ? item.zScore.toFixed(1) : '-'}
                    </span>
                 </td>
-                
+
                 <td className={`px-3 py-1 text-left border-r border-zinc-900/50 font-bold text-[10px] pl-4 ${borderClass}`}>
                   <div className="flex items-center gap-2">
-                    {/* Setup Badges */}
                     {item.isInsideBar && <span className="bg-yellow-600 text-black px-1.5 py-0.5 rounded-sm shadow-sm shadow-yellow-500/20">INSIDE</span>}
                     {item.isNR7 && <span className="bg-cyan-600 text-black px-1.5 py-0.5 rounded-sm shadow-sm shadow-cyan-500/20">NR7</span>}
-                    
-                    {/* Confluence Signals */}
+
                     {isHighRvol && isPattern && <span className="text-blue-400 flex items-center gap-1"><BarChart2 className="w-3 h-3"/> VOL+</span>}
                     {isRsiHigh && isPattern && <span className="text-red-400 flex items-center gap-1"><Activity className="w-3 h-3"/> OB</span>}
                     {isRsiLow && isPattern && <span className="text-green-400 flex items-center gap-1"><Activity className="w-3 h-3"/> OS</span>}
-                    
-                    {/* If NO Pattern but Signal */}
+
                     {!isPattern && isRsiHigh && <span className="text-red-500">O/BOUGHT</span>}
                     {!isPattern && isRsiLow && <span className="text-green-500">O/SOLD</span>}
                     {!isPattern && isHighRvol && <span className="text-blue-500">VOL SPIKE</span>}
                   </div>
                 </td>
-                
+
                 <td className={`px-3 py-1 text-right border-r border-zinc-900/50 text-zinc-400 tabular-nums pr-4 ${borderClass}`}>
                   {(item.volume / 1000000).toFixed(1)}
                 </td>
@@ -192,15 +190,10 @@ export default function ScannerTable({ data, isLoading }: Props) {
   );
 }
 
-function keyToProp(key: SortKey): keyof Opportunity | 'setup' {
-  if (key === 'setup') return 'setup';
-  return key;
-}
-
 function SortHeader({ label, sortKey, currentSort, onSort, align = 'left', paddingLeft = '' }: any) {
   const isActive = currentSort.key === sortKey;
   return (
-    <th 
+    <th
       className={`px-3 py-2 uppercase font-normal text-zinc-400 border-b border-orange-500/30 cursor-pointer hover:text-orange-400 select-none text-${align} ${paddingLeft}`}
       onClick={() => onSort(sortKey)}
     >

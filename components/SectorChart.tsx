@@ -45,7 +45,7 @@ export default function SectorChart({ data, spyChange }: Props) {
   return (
     <div className="w-full h-full flex flex-col bg-black overflow-hidden relative">
       <div className="terminal-header border-none px-0 pb-2 mb-2 shrink-0">
-        <span>SECTOR RELATIVE STRENGTH (vs SPY {spyChange > 0 ? '+' : ''}{spyChange.toFixed(2)}%)</span>
+        <span>SECTOR RELATIVE STRENGTH TODAY (vs SPY {spyChange > 0 ? '+' : ''}{spyChange.toFixed(2)}%)</span>
         <div className="flex gap-2 text-[10px]">
           <span className="text-green-500">LEADERS</span>
           <span className="text-red-500">LAGGARDS</span>

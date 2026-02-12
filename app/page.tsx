@@ -14,7 +14,7 @@ export default function Home() {
   
   // Progress & Stats
   const [processedCount, setProcessedCount] = useState(0);
-  const [totalCount, setTotalCount] = useState(503); 
+  const [totalCount, setTotalCount] = useState(395);
   const [startTime, setStartTime] = useState<number>(0);
   const [etr, setEtr] = useState<string>('--');
   
@@ -213,7 +213,7 @@ export default function Home() {
           <div className="h-auto min-h-[100px] border-t border-zinc-800 mt-3 pt-3 shrink-0">
             <h3 className="text-[10px] font-bold text-zinc-600 mb-2 uppercase tracking-widest">SYSTEM_ALERTS</h3>
             <div className="text-[10px] text-zinc-500 leading-relaxed space-y-1 font-mono pl-1">
-              <p>[+] UNIVERSE: 500+ S&P ASSETS</p>
+              <p>[+] UNIVERSE: ~400 S&P / GROWTH ASSETS</p>
               <p>[+] STRATEGY: INSIDE BAR / NR7</p>
               <p>[+] MOMENTUM: Z-SCORE / RSI / RVOL</p>
             </div>

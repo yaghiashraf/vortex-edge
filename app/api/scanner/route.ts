@@ -20,29 +20,52 @@ function isInsideBar(current: Candle, previous: Candle): boolean {
 
 function isNR7(candles: Candle[]): boolean {
   if (candles.length < 8) return false;
-  
+
   const targetIndex = candles.length - 1;
   const targetRange = candles[targetIndex].high - candles[targetIndex].low;
-  
+
   for (let i = 1; i <= 6; i++) {
     const prevIndex = targetIndex - i;
     const range = candles[prevIndex].high - candles[prevIndex].low;
     if (targetRange >= range) return false;
   }
-  
+
   return true;
 }
 
-// Function to fetch in chunks
+/**
+ * Returns the fraction of the regular US market session that has elapsed (0 to 1).
+ * Returns 1 if market is closed (after hours / weekend), so no normalization is applied.
+ */
+function getMarketDayFraction(): number {
+  const now = new Date();
+  // Convert to ET (Eastern Time) - handle both EST and EDT
+  const etString = now.toLocaleString('en-US', { timeZone: 'America/New_York' });
+  const etDate = new Date(etString);
+  const hours = etDate.getHours();
+  const minutes = etDate.getMinutes();
+  const timeDecimal = hours + minutes / 60; // e.g., 11:30 = 11.5
+
+  const marketOpen = 9.5;   // 9:30 AM ET
+  const marketClose = 16.0; // 4:00 PM ET
+
+  // Outside market hours — return 1 so RVOL uses raw value (full day volume)
+  if (timeDecimal < marketOpen || timeDecimal >= marketClose) return 1;
+
+  // During market hours — return fraction elapsed (min 0.05 to avoid division by near-zero)
+  return Math.max(0.05, (timeDecimal - marketOpen) / (marketClose - marketOpen));
+}
+
 async function fetchInChunks(tickers: string[], chunkSize: number) {
   const results = [];
+  const dayFraction = getMarketDayFraction();
+
   for (let i = 0; i < tickers.length; i += chunkSize) {
     const chunk = tickers.slice(i, i + chunkSize);
-    // Process chunk concurrently
     const chunkResults = await Promise.all(chunk.map(async (symbol) => {
       try {
         const data = await fetchYahooData(symbol);
-        
+
         if (!data || !data.candles || data.candles.length < 5) return null;
 
         const history = data.candles;
@@ -50,48 +73,49 @@ async function fetchInChunks(tickers: string[], chunkSize: number) {
         const prevCandle = history[history.length - 2];
         const closePrices = history.map((c: Candle) => c.close);
         const volumeArray = history.map((c: Candle) => c.volume);
-        
-        // Technicals
-        const rsi = calculateRSI(closePrices, 14); 
-        const atr = calculateATR(history, 14);     
-        const avgVol = calculateSMA(volumeArray.slice(0, -1), 14); 
-        const rvol = avgVol && avgVol > 0 ? (data.volume / avgVol) : 0;
+
+        // Technical Indicators
+        const rsi = calculateRSI(closePrices, 14);
+        const atr = calculateATR(history, 14);
         const zScore = calculateZScore(closePrices, 20);
+
+        // RVOL: Normalize by fraction of trading day elapsed
+        // During market hours, today's volume is partial — divide by dayFraction to project full-day
+        const avgVol = calculateSMA(volumeArray.slice(0, -1), 14);
+        let rvol = 0;
+        if (avgVol && avgVol > 0) {
+          const projectedVolume = data.volume / dayFraction;
+          rvol = projectedVolume / avgVol;
+        }
+
+        // ATR% — Expected daily range as percentage of price
+        // THE key metric prop firms use for position sizing & volatility screening
+        const atrPct = (atr && data.price > 0) ? (atr / data.price) * 100 : null;
 
         const insideBar = isInsideBar(lastCandle, prevCandle);
         const nr7 = isNR7(history);
-        
+
         const trendLookback = Math.min(20, closePrices.length - 1);
         const trend = closePrices[closePrices.length - 1] > closePrices[closePrices.length - trendLookback] ? 'Up' : 'Down';
 
-        const isRSIHigh = rsi && rsi > 70;
-        const isRSILow = rsi && rsi < 30;
-        const isTrendUp = trend === 'Up';
-
-        // Filter Logic:
-        // We want to return almost everything that isn't complete garbage, 
-        // but flag the good stuff.
-        // Actually, let's return EVERYTHING that successfully fetched, 
-        // so we can calculate Market Breadth accurately on the client.
-        // But we discard "penny stocks" or very low volume to keep it clean.
-        
         if (data.price < 5) return null;
 
         return {
           symbol,
           price: data.price,
-          change: data.change, // Percent change for breadth
+          change: data.change,
           date: lastCandle.date,
           isInsideBar: insideBar,
           isNR7: nr7,
           volume: data.volume,
           rsi: rsi ? parseFloat(rsi.toFixed(2)) : null,
-          trend: trend,
+          trend,
           rvol: parseFloat(rvol.toFixed(2)),
           atr: atr ? parseFloat(atr.toFixed(2)) : null,
-          zScore: zScore ? parseFloat(zScore.toFixed(2)) : null
+          atrPct: atrPct ? parseFloat(atrPct.toFixed(2)) : null,
+          zScore: zScore ? parseFloat(zScore.toFixed(2)) : null,
         };
-      } catch (err) {
+      } catch {
         return null;
       }
     }));
@@ -108,15 +132,14 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const page = parseInt(searchParams.get('page') || '0', 10);
     let limit = parseInt(searchParams.get('limit') || '20', 10);
-    
-    // Security: Cap limit to prevent excessive processing per request
+
     if (limit > 50) limit = 50;
 
     const start = page * limit;
     const end = start + limit;
-    
+
     if (start >= TICKERS.length) {
-      return NextResponse.json({ 
+      return NextResponse.json({
         opportunities: [],
         scannedCount: 0,
         hasMore: false,
@@ -130,7 +153,7 @@ export async function GET(req: NextRequest) {
     const rawResults = await fetchInChunks(currentBatch, 5);
     const opportunities = rawResults.filter(r => r !== null);
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       opportunities,
       scannedCount: currentBatch.length,
       hasMore,
