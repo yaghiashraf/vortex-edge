@@ -60,19 +60,19 @@ export default function SectorChart({ data, spyChange }: Props) {
               type="number"
               hide={true} 
             />
-            {/* Increased width to 45 and adjusted styling for labels */}
+            {/* Switched dataKey to "name" and increased width significantly to fit names */}
             <YAxis 
-              dataKey="symbol" 
+              dataKey="name" 
               type="category" 
-              tick={{ fill: '#fb923c', fontSize: 10, fontFamily: 'monospace', fontWeight: 'bold' }} 
-              width={45} 
+              tick={{ fill: '#fb923c', fontSize: 9, fontFamily: 'monospace', fontWeight: 'bold' }} 
+              width={90} 
               axisLine={false}
               tickLine={false}
-              dx={-5} // Slight offset to ensure visibility
+              interval={0}
             />
             <Tooltip content={<CustomTooltip />} cursor={{ fill: '#ffffff10' }} wrapperStyle={{ outline: 'none' }} />
             <ReferenceLine x={0} stroke="#666" strokeWidth={1} />
-            <Bar dataKey="relativeStrength" barSize={16} radius={[0, 2, 2, 0]}>
+            <Bar dataKey="relativeStrength" barSize={14} radius={[0, 2, 2, 0]}>
               {sortedData.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={entry.relativeStrength >= 0 ? '#22c55e' : '#ef4444'} />
               ))}

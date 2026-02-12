@@ -38,10 +38,21 @@ export default function Home() {
 
   useEffect(() => {
     fetchData();
-    const timer = setInterval(() => {
+
+    // Live Clock (1s)
+    const clockTimer = setInterval(() => {
       setTime(new Date().toLocaleTimeString());
     }, 1000);
-    return () => clearInterval(timer);
+
+    // Auto Refresh Data (15m)
+    const refreshTimer = setInterval(() => {
+      fetchData();
+    }, 15 * 60 * 1000);
+
+    return () => {
+      clearInterval(clockTimer);
+      clearInterval(refreshTimer);
+    };
   }, []);
 
   return (
