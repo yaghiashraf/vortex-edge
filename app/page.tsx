@@ -137,10 +137,10 @@ export default function Home() {
   return (
     <div className="h-screen w-screen bg-black text-orange-500 font-mono overflow-hidden flex flex-col selection:bg-orange-500 selection:text-black">
       {/* HEADER */}
-      <header className="h-12 bg-zinc-950 border-b border-zinc-800 flex items-center justify-between px-4 text-xs uppercase tracking-widest shrink-0 shadow-sm z-50 relative">
+      <header className="h-14 bg-zinc-950 border-b border-zinc-800 flex items-center justify-between px-4 text-xs uppercase tracking-widest shrink-0 shadow-sm z-50 relative">
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-2">
-            <Image src="/logo.svg" alt="Vortex Edge" width={140} height={28} priority className="h-6 w-auto" />
+            <Image src="/logo.svg" alt="Vortex Edge" width={180} height={36} priority className="h-8 w-auto" />
           </div>
           <span className="text-zinc-600 hidden sm:inline">|</span>
           <div className="hidden sm:flex items-center gap-4 text-[10px]">

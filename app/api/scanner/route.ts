@@ -105,7 +105,10 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const page = parseInt(searchParams.get('page') || '0', 10);
-    const limit = parseInt(searchParams.get('limit') || '20', 10);
+    let limit = parseInt(searchParams.get('limit') || '20', 10);
+    
+    // Security: Cap limit to prevent excessive processing per request
+    if (limit > 50) limit = 50;
 
     const start = page * limit;
     const end = start + limit;

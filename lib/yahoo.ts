@@ -40,12 +40,14 @@ export async function fetchYahooData(symbol: string) {
 
       if (!timestamps || !quote || !quote.close) return null;
 
-      const currentPrice = meta.regularMarketPrice;
-      const previousClose = meta.chartPreviousClose;
-      const change = currentPrice - previousClose;
-      const changePercent = (change / previousClose) * 100;
-      const volume = meta.regularMarketVolume;
-
+          const currentPrice = meta.regularMarketPrice;
+          const previousClose = meta.chartPreviousClose;
+          
+          if (!previousClose) return null; // Safety check
+      
+          const change = currentPrice - previousClose;
+          const changePercent = (change / previousClose) * 100;
+          const volume = meta.regularMarketVolume;
       const candles = timestamps.map((ts: number, i: number) => ({
         date: new Date(ts * 1000),
         open: quote.open[i],
