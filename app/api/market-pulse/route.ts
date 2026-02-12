@@ -15,33 +15,41 @@ const SECTORS = [
   { symbol: 'XLC', name: 'Communication' },
 ];
 
+export const maxDuration = 30;
+
 export async function GET() {
   try {
-    // Fetch SPY first to ensure we have a baseline
+    // Fetch SPY first to get baseline
     const spyData = await fetchYahooData('SPY', '5d');
     const spyChange = spyData?.change || 0;
 
-    // Fetch all sectors concurrently from the SAME source for consistency
-    const sectorResults = await Promise.all(
-      SECTORS.map(async (sector) => {
-        const data = await fetchYahooData(sector.symbol, '5d');
-        return { sector, data };
-      })
-    );
+    // Fetch sectors in small batches of 3 to avoid Yahoo rate limits
+    const allResults: { sector: typeof SECTORS[0]; data: any }[] = [];
 
-    const sectors = sectorResults
-      .map(({ sector, data }) => {
-        const change = data?.change || 0;
-        const price = data?.price || 0;
+    for (let i = 0; i < SECTORS.length; i += 3) {
+      const batch = SECTORS.slice(i, i + 3);
+      const batchResults = await Promise.all(
+        batch.map(async (sector) => {
+          const data = await fetchYahooData(sector.symbol, '5d');
+          return { sector, data };
+        })
+      );
+      allResults.push(...batchResults);
 
-        return {
-          ...sector,
-          price,
-          change,
-          relativeStrength: change - spyChange,
-          error: !data,
-        };
-      })
+      // Delay between batches to avoid rate limiting
+      if (i + 3 < SECTORS.length) {
+        await new Promise(r => setTimeout(r, 300));
+      }
+    }
+
+    const sectors = allResults
+      .map(({ sector, data }) => ({
+        ...sector,
+        price: data?.price || 0,
+        change: data?.change || 0,
+        relativeStrength: (data?.change || 0) - spyChange,
+        error: !data,
+      }))
       .filter(d => !d.error && d.price > 0);
 
     sectors.sort((a, b) => b.relativeStrength - a.relativeStrength);
