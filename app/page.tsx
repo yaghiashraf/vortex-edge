@@ -1,52 +1,87 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Activity, BarChart3, Terminal } from 'lucide-react';
 import SectorChart from '@/components/SectorChart';
 import ScannerTable from '@/components/ScannerTable';
 
 export default function Home() {
   const [sectorData, setSectorData] = useState<any>(null);
-  const [scannerData, setScannerData] = useState<any>(null);
+  const [scannerData, setScannerData] = useState<any[]>([]);
   const [loadingSectors, setLoadingSectors] = useState(true);
   const [loadingScanner, setLoadingScanner] = useState(true);
+  const [progress, setProgress] = useState(0);
   
-  const fetchData = async () => {
+  const isScanningRef = useRef(false);
+
+  // Fetch Sectors (Once)
+  const fetchSectors = async () => {
     setLoadingSectors(true);
-    setLoadingScanner(true);
-
     try {
-      const [sectorRes, scannerRes] = await Promise.all([
-        fetch('/api/market-pulse'),
-        fetch('/api/scanner')
-      ]);
-
-      const sectors = await sectorRes.json();
-      const scanner = await scannerRes.json();
-
-      setSectorData(sectors);
-      setScannerData(scanner);
+      const res = await fetch('/api/market-pulse');
+      const data = await res.json();
+      setSectorData(data);
     } catch (err) {
-      console.error('Failed to load dashboard data', err);
+      console.error(err);
     } finally {
       setLoadingSectors(false);
-      setLoadingScanner(false);
     }
+  };
+
+  // Fetch Scanner (Paginated)
+  const fetchScanner = async () => {
+    if (isScanningRef.current) return;
+    isScanningRef.current = true;
+    setLoadingScanner(true);
+    setScannerData([]); // Clear old data on full refresh
+    setProgress(0);
+
+    let page = 0;
+    let hasMore = true;
+    const limit = 50; // Process 50 tickers per API call
+
+    try {
+      while (hasMore) {
+        const res = await fetch(`/api/scanner?page=${page}&limit=${limit}`);
+        if (!res.ok) break;
+        
+        const data = await res.json();
+        
+        if (data.opportunities && data.opportunities.length > 0) {
+          setScannerData(prev => [...prev, ...data.opportunities]);
+        }
+
+        hasMore = data.hasMore;
+        page++;
+        
+        // Approx progress
+        setProgress(Math.min(100, Math.round((page * limit) / 500 * 100)));
+      }
+    } catch (err) {
+      console.error('Scan failed', err);
+    } finally {
+      setLoadingScanner(false);
+      isScanningRef.current = false;
+      setProgress(100);
+    }
+  };
+
+  const fetchAll = () => {
+    fetchSectors();
+    fetchScanner();
   };
 
   const [time, setTime] = useState<string>('');
 
   useEffect(() => {
-    fetchData();
+    fetchAll();
 
-    // Live Clock (1s)
     const clockTimer = setInterval(() => {
       setTime(new Date().toLocaleTimeString());
     }, 1000);
 
-    // Auto Refresh Data (15m)
     const refreshTimer = setInterval(() => {
-      fetchData();
+      fetchAll();
     }, 15 * 60 * 1000);
 
     return () => {
@@ -64,13 +99,21 @@ export default function Home() {
             <Terminal className="w-4 h-4" /> VORTEX_TERMINAL_V1
           </span>
           <span className="text-zinc-600 hidden sm:inline">|</span>
-          <span className="text-zinc-500 hidden sm:inline">SESSION: <span className="text-green-500 font-bold">ACTIVE</span></span>
+          <span className="text-zinc-500 hidden sm:inline">
+            SESSION: <span className="text-green-500 font-bold">ACTIVE</span>
+          </span>
+          {loadingScanner && (
+            <span className="text-zinc-500 ml-4 animate-pulse">
+              SCANNING... {progress}%
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-6">
            <span className="text-zinc-400 font-bold font-mono text-sm tracking-wide bg-zinc-900 px-3 py-1 rounded border border-zinc-800">{time}</span>
            <button 
-             onClick={fetchData} 
-             className="hover:text-white hover:bg-zinc-800 px-2 py-1 rounded transition-colors text-zinc-500"
+             onClick={fetchAll} 
+             disabled={loadingScanner}
+             className="hover:text-white hover:bg-zinc-800 px-2 py-1 rounded transition-colors text-zinc-500 disabled:opacity-50"
              title="REFRESH DATA"
            >
              [REFRESH]
@@ -102,7 +145,7 @@ export default function Home() {
           <div className="h-auto min-h-[100px] border-t border-zinc-800 mt-3 pt-3 shrink-0">
             <h3 className="text-[10px] font-bold text-zinc-600 mb-2 uppercase tracking-widest">SYSTEM_ALERTS</h3>
             <div className="text-[10px] text-zinc-500 leading-relaxed space-y-1 font-mono pl-1">
-              <p>[+] UNIVERSE: 200+ LIQUID ASSETS</p>
+              <p>[+] UNIVERSE: 500+ S&P ASSETS</p>
               <p>[+] STRATEGY: INSIDE BAR / NR7</p>
               <p>[+] MOMENTUM: RSI(14) & TREND</p>
             </div>
@@ -120,15 +163,15 @@ export default function Home() {
               <span className="flex items-center gap-1"><span className="w-2 h-2 bg-yellow-600 rounded-sm"></span> INSIDE</span>
               <span className="flex items-center gap-1"><span className="w-2 h-2 bg-cyan-600 rounded-sm"></span> NR7</span>
               <span className="flex items-center gap-1 text-zinc-600">|</span>
-              <span className="text-zinc-500">ROWS: {scannerData?.opportunities?.length || 0}</span>
+              <span className="text-zinc-500">ROWS: {scannerData.length}</span>
             </div>
           </div>
           
           {/* Table Container - Needs explicit overflow handling */}
           <div className="flex-1 w-full overflow-hidden relative">
              <ScannerTable 
-               data={scannerData?.opportunities || []} 
-               isLoading={loadingScanner} 
+               data={scannerData} 
+               isLoading={scannerData.length === 0 && loadingScanner} 
              />
           </div>
         </div>

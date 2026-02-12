@@ -1,5 +1,5 @@
 // vortex-edge/app/api/scanner/route.ts
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import { fetchYahooData } from '@/lib/yahoo';
 import { TICKERS } from '@/lib/tickers';
 import { calculateRSI, calculateSMA, calculateATR } from '@/lib/indicators';
@@ -43,7 +43,7 @@ async function fetchInChunks(tickers: string[], chunkSize: number) {
       try {
         const data = await fetchYahooData(symbol);
         
-        if (!data || !data.candles || data.candles.length < 15) return null; // Need 15 for RSI calculation
+        if (!data || !data.candles || data.candles.length < 20) return null;
 
         const history = data.candles;
         const lastCandle = history[history.length - 1];
@@ -56,22 +56,22 @@ async function fetchInChunks(tickers: string[], chunkSize: number) {
         const atr = calculateATR(history, 14);     // ATR(14)
         const avgVol = calculateSMA(volumeArray.slice(0, -1), 14); // SMA of previous 14 days volume (exclude today)
         
-        // Relative Volume (Current vs Avg)
+        // Relative Volume
         const rvol = avgVol && avgVol > 0 ? (data.volume / avgVol) : 0;
 
         const insideBar = isInsideBar(lastCandle, prevCandle);
         const nr7 = isNR7(history);
         
         // Trend Check (Price > 20d ago)
-        // If history < 20, just use first avail
         const trendLookback = Math.min(20, closePrices.length - 1);
         const trend = closePrices[closePrices.length - 1] > closePrices[closePrices.length - trendLookback] ? 'Up' : 'Down';
 
         const isRSIHigh = rsi && rsi > 70;
         const isRSILow = rsi && rsi < 30;
 
-        // Only return if setup OR high RVOL OR extreme RSI
-        if (insideBar || nr7 || isRSIHigh || isRSILow || rvol > 1.5) {
+        // Return if setup OR high RVOL OR extreme RSI
+        // Also ensure price > 5 (filter penny stocks if any)
+        if (data.price > 5 && (insideBar || nr7 || isRSIHigh || isRSILow || rvol > 1.5)) {
           return {
             symbol,
             price: data.price,
@@ -87,25 +87,49 @@ async function fetchInChunks(tickers: string[], chunkSize: number) {
         }
         return null;
       } catch (err) {
-        console.error(`Failed to scan ${symbol}`, err);
+        // console.error(`Failed to scan ${symbol}`, err);
         return null;
       }
     }));
     results.push(...chunkResults);
     // Tiny delay to be nice to API
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await new Promise(resolve => setTimeout(resolve, 50));
   }
   return results;
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    const rawResults = await fetchInChunks(TICKERS, 10);
+    const { searchParams } = new URL(req.url);
+    const page = parseInt(searchParams.get('page') || '0', 10);
+    const limit = parseInt(searchParams.get('limit') || '50', 10); // Process 50 per request
+
+    // Pagination logic
+    const start = page * limit;
+    const end = start + limit;
+    
+    // Safety check
+    if (start >= TICKERS.length) {
+      return NextResponse.json({ 
+        opportunities: [],
+        scannedCount: 0,
+        hasMore: false,
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    const currentBatch = TICKERS.slice(start, end);
+    const hasMore = end < TICKERS.length;
+
+    // Process this batch (chunks of 10 inside fetchInChunks)
+    const rawResults = await fetchInChunks(currentBatch, 10);
     const opportunities = rawResults.filter(r => r !== null);
 
     return NextResponse.json({ 
       opportunities,
-      scannedCount: TICKERS.length,
+      scannedCount: currentBatch.length,
+      hasMore,
+      nextPage: hasMore ? page + 1 : null,
       timestamp: new Date().toISOString()
     });
 

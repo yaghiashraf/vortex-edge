@@ -1,33 +1,9 @@
 // vortex-edge/lib/tickers.ts
 
 export const TICKERS = [
-  // --- INDICES & ETFS ---
-  'SPY', 'QQQ', 'IWM', 'DIA', 'TLT', 'TQQQ', 'SQQQ', 'SOXL', 'SOXS', 'UVXY', 'ARKK', 'XBI', 'HYG', 'GLD', 'SLV', 'UNG', 'USO', 'FXI', 'KWEB', 'EWZ',
+  // --- MAGNIFICENT 7 & MEGA CAP ---
+  'MSFT', 'AAPL', 'NVDA', 'GOOGL', 'GOOG', 'AMZN', 'META', 'BRK-B', 'LLY', 'AVGO', 'TSLA', 'JPM', 'V', 'XOM', 'UNH', 'MA', 'PG', 'COST', 'JNJ', 'HD', 'MRK', 'ABBV', 'CVX', 'BAC', 'CRM', 'AMD', 'PEP', 'KO', 'NFLX', 'WMT', 'TMO', 'ADBE', 'LIN', 'MCD', 'DIS', 'WFC', 'CSCO', 'ACN', 'ABT', 'QCOM', 'CAT', 'INTU', 'IBM', 'TXN', 'VZ', 'AMAT', 'GE', 'DHR', 'AMGN', 'ISRG', 'UBER', 'CMCSA', 'PFE', 'NOW', 'PM', 'UNP', 'SPGI', 'LOW', 'GS', 'COP', 'INTC', 'HON', 'RTX', 'AXP', 'BKNG', 'T', 'ELV', 'SYK', 'BLK', 'ETN', 'PLD', 'NEE', 'LRCX', 'TJX', 'MS', 'PGR', 'UPS', 'BA', 'MDT', 'BSX', 'REGN', 'BMY', 'ADP', 'MMC', 'CB', 'DE', 'VRTX', 'LMT', 'ADI', 'C', 'CI', 'MDLZ', 'SCHW', 'MU', 'GILD', 'PANW', 'BX', 'FI', 'KLAC', 'TMUS', 'ZTS', 'SBUX', 'SNPS', 'CVS', 'MO', 'AMT', 'CDNS', 'WM', 'EQIX', 'EOG', 'SO', 'SLB', 'CME', 'SHW', 'CSX', 'ITW', 'BDX', 'CL', 'PYPL', 'DUK', 'ICE', 'ANET', 'PH', 'APH', 'AON', 'TGT', 'ORCL', 'NKE', 'MCK', 'MPC', 'USB', 'HCA', 'TT', 'PSX', 'NXPI', 'EMR', 'CMG', 'MAR', 'MCO', 'GD', 'PNC', 'TDG', 'ORLY', 'ECL', 'ADSK', 'ROP', 'CEG', 'FCX', 'NSC', 'GM', 'HLT', 'FDX', 'MSI', 'WELL', 'CARR', 'OXY', 'AIG', 'AZO', 'EW', 'F', 'COF', 'DXCM', 'TRV', 'AJG', 'O', 'VLO', 'PCAR', 'ROST', 'URI', 'MET', 'PSA', 'APD', 'WMB', 'KMB', 'GLW', 'AEP', 'SRE', 'TEL', 'TFC', 'D', 'HES', 'JCI', 'IDXX', 'GWW', 'PAYX', 'AFL', 'CTAS', 'CHTR', 'STZ', 'ALL', 'NEM', 'IQV', 'FIS', 'CMI', 'OQK', 'AMP', 'AME', 'DLR', 'FAST', 'PRU', 'KMI', 'KR', 'YUM', 'CTVA', 'SYY', 'IR', 'COR', 'BK', 'OTIS', 'RSG', 'EXC', 'ODFL', 'GEHC', 'PCG', 'LEN', 'ACGL', 'VRSK', 'IT', 'CSGP', 'XEL', 'BKR', 'KDP', 'ED', 'MNST', 'GEV', 'PPG', 'VMC', 'RCL', 'GPN', 'HPQ', 'EA', 'ROK', 'MPWR', 'DAL', 'PEG', 'EFX', 'HUM', 'HAL', 'WEC', 'FANG', 'OKE', 'STT', 'DFS', 'LUV', 'MTD', 'CBRE', 'AWK', 'ULTA', 'TSCO', 'WTW', 'KEYS', 'HIG', 'ZBH', 'APTV', 'GL', 'WST', 'AVB', 'FITB', 'BRO', 'TROW', 'GPC', 'FTV', 'FE', 'CAH', 'MTB', 'RMD', 'PHM', 'DHI', 'IRM', 'HPE', 'EIX', 'WY', 'NVR', 'DOV', 'HST', 'UAL', 'NTRS', 'VTR', 'ARE', 'RJF', 'XYL', 'PPL', 'BR', 'ETR', 'VRSN', 'FSLR', 'EQR', 'STX', 'CPT', 'EXR', 'RF', 'CINF', 'HBAN', 'CNP', 'ESS', 'MKC', 'L', 'GRMN', 'WAB', 'LHX', 'KEY', 'CFG', 'SYF', 'MAA', 'NTAP', 'TDY', 'DGX', 'EXPD', 'ATO', 'DRI', 'CMS', 'AES', 'K', 'IEX', 'TSN', 'CLX', 'COO', 'HOLX', 'FDS', 'J', 'PFG', 'OMC', 'BBY', 'DG', 'EVRG', 'PKG', 'TXT', 'MOH', 'MAS', 'TRGP', 'WRB', 'EG', 'NI', 'NDSN', 'DPZ', 'LNT', 'JBHT', 'SWK', 'AKAM', 'KIM', 'POOL', 'UDR', 'TER', 'GEN', 'SNA', 'IP', 'LKQ', 'INCY', 'ALB', 'BIO', 'BG', 'EMN', 'EXPE', 'HRL', 'MGM', 'KHC', 'GNRC', 'LYV', 'UHS', 'TAP', 'WDC', 'AOS', 'WYNN', 'BEN', 'RL', 'CPB', 'HAS', 'FOXA', 'FOX', 'BWA', 'SEE', 'NWS', 'NWSA',
   
-  // --- MAGNIFICENT 7 + 1 ---
-  'NVDA', 'TSLA', 'AMD', 'AAPL', 'MSFT', 'AMZN', 'GOOGL', 'META', 'NFLX',
-  
-  // --- SEMICONDUCTORS ---
-  'AVGO', 'TSM', 'ASML', 'LRCX', 'AMAT', 'MU', 'INTC', 'QCOM', 'TXN', 'ADI', 'KLAC', 'MRVL', 'ARM', 'SMCI', 'ON', 'MCHP', 'STM',
-  
-  // --- SOFTWARE & CLOUD ---
-  'ORCL', 'ADBE', 'CRM', 'IBM', 'NOW', 'INTU', 'UBER', 'ABNB', 'PANW', 'SNOW', 'PLTR', 'CRWD', 'DDOG', 'ZS', 'NET', 'TEAM', 'WDAY', 'ADSK', 'FTNT', 'MDB', 'GTLB',
-  
-  // --- FINANCIALS ---
-  'JPM', 'BAC', 'WFC', 'C', 'GS', 'MS', 'BLK', 'AXP', 'V', 'MA', 'PYPL', 'COF', 'USB', 'PNC', 'SCHW', 'SOFI', 'NU', 'AFRM', 'UPST',
-  
-  // --- CRYPTO & BLOCKCHAIN ---
-  'COIN', 'MSTR', 'MARA', 'RIOT', 'CLSK', 'BITF', 'HUT', 'HOOD', 'IBIT',
-  
-  // --- CONSUMER & RETAIL ---
-  'WMT', 'COST', 'TGT', 'HD', 'LOW', 'MCD', 'SBUX', 'CMG', 'NKE', 'LULU', 'DIS', 'CMCSA', 'BKNG', 'MAR', 'HLT', 'RCL', 'CCL', 'NCLH',
-  
-  // --- INDUSTRIAL & ENERGY ---
-  'CAT', 'DE', 'BA', 'LMT', 'RTX', 'GE', 'HON', 'MMM', 'UPS', 'FDX', 'XOM', 'CVX', 'COP', 'SLB', 'HAL', 'OXY', 'EOG', 'PXD', 'VLO',
-  
-  // --- HEALTHCARE ---
-  'LLY', 'UNH', 'JNJ', 'PFE', 'MRK', 'ABBV', 'TMO', 'DHR', 'AMGN', 'GILD', 'BIIB', 'VRTX', 'REGN', 'ISRG',
-  
-  // --- HIGH BETA / GROWTH / MEME ---
-  'GME', 'AMC', 'CHWY', 'ROKU', 'DKNG', 'SQ', 'SHOP', 'U', 'RBLX', 'CVNA', 'LCID', 'RIVN', 'NIO', 'XPEV', 'LI', 'BABA', 'PDD', 'JD', 'BIDU', 'SNAP', 'PINS', 'ETSY'
+  // --- ADDED GROWTH / LIQUIDITY ---
+  'PLTR', 'SOFI', 'MARA', 'RIOT', 'COIN', 'MSTR', 'HOOD', 'DKNG', 'SHOP', 'SQ', 'U', 'RBLX', 'AFRM', 'UPST', 'CVNA', 'NET', 'SNOW', 'DDOG', 'ZS', 'TTD', 'APP', 'ARM', 'SMCI', 'TSM', 'ASML'
 ];
