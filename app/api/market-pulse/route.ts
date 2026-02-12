@@ -17,16 +17,15 @@ const SECTORS = [
 
 export async function GET() {
   try {
-    const allSymbols = [...SECTORS.map(s => s.symbol), 'SPY'];
+    // Prioritize SPY first to ensure we have a baseline
+    const allSymbols = ['SPY', ...SECTORS.map(s => s.symbol)];
     
-    // Fetch all sequentially with a tiny delay to be nice to AV rate limits
-    // Even if it throttles, the Composite Fetcher will fallback to Yahoo.
     const results = [];
     for (const symbol of allSymbols) {
       const data = await fetchCompositeQuote(symbol);
       results.push(data);
-      // 200ms delay
-      await new Promise(resolve => setTimeout(resolve, 200));
+      // 100ms delay to balance speed vs rate limits
+      await new Promise(resolve => setTimeout(resolve, 100));
     }
     
     const quotes = results.filter(q => q !== null);
