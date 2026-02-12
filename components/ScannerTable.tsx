@@ -23,7 +23,7 @@ export default function ScannerTable({ data, isLoading }: Props) {
   if (isLoading) {
     return (
       <div className="w-full h-[300px] flex flex-col justify-center items-center text-orange-500 font-mono text-sm tracking-wide bg-black/50 border border-orange-500/20 animate-pulse">
-        <span>> SCANNING MARKET DATA...</span>
+        <span>[+] SCANNING MARKET DATA...</span>
         <span className="text-[10px] text-zinc-600 mt-2">PROCESSING 100+ TICKERS</span>
       </div>
     );
