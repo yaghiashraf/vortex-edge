@@ -1,85 +1,91 @@
 import { NextResponse } from 'next/server';
-import yahooFinance from 'yahoo-finance2';
+import { differenceInDays, subDays } from 'date-fns';
 
-// List of high-interest tickers
 const TICKERS = [
   'NVDA', 'TSLA', 'AMD', 'AAPL', 'MSFT', 'AMZN', 'GOOGL', 'META', 'NFLX', 
-  'SPY', 'QQQ', 'IWM', 'COIN', 'MSTR', 'PLTR', 'SOFI', 'MARA', 'GME', 'HOOD', 'ROKU'
+  'SPY', 'QQQ', 'IWM', 'COIN', 'MSTR', 'PLTR', 'SOFI', 'MARA', 'GME', 'HOOD'
 ];
 
-interface Candle {
-  date: Date;
-  open: number;
-  high: number;
-  low: number;
-  close: number;
-  volume: number;
+const FINNHUB_KEY = process.env.FINNHUB_API_KEY || 'cvr8m1hr01qp88cp2740cvr8m1hr01qp88cp274g'; // Fallback
+
+async function getDailyCandles(symbol: string) {
+  try {
+    const today = Math.floor(Date.now() / 1000);
+    const tenDaysAgo = Math.floor(subDays(Date.now(), 15).getTime() / 1000);
+
+    const res = await fetch(
+      `https://finnhub.io/api/v1/stock/candle?symbol=${symbol}&resolution=D&from=${tenDaysAgo}&to=${today}&token=${FINNHUB_KEY}`,
+      { next: { revalidate: 3600 } } // Cache heavily (1h) since this is EOD scan
+    );
+    
+    if (!res.ok) throw new Error(`Status ${res.status}`);
+    const data = await res.json();
+    
+    if (data.s !== 'ok' || !data.c) return null;
+
+    // Transform Finnhub format {c: [], h: [], l: [], ...} to array of objects
+    const candles = data.c.map((close: number, index: number) => ({
+      date: new Date(data.t[index] * 1000),
+      open: data.o[index],
+      high: data.h[index],
+      low: data.l[index],
+      close: close,
+      volume: data.v[index]
+    }));
+
+    return candles;
+  } catch (err) {
+    console.error(`Failed to fetch ${symbol} history:`, err);
+    return null;
+  }
 }
 
-function isInsideBar(current: Candle, previous: Candle): boolean {
+function isInsideBar(current: any, previous: any) {
+  if (!current || !previous) return false;
   return current.high < previous.high && current.low > previous.low;
 }
 
-function isNR7(candles: Candle[]): boolean {
-  // We need at least 7 candles
-  if (candles.length < 7) return false;
+function isNR7(candles: any[]) {
+  if (candles.length < 8) return false;
   
-  // Get the last 7 candles (most recent is at index length-1)
-  const relevantCandles = candles.slice(-7);
-  const currentRange = relevantCandles[6].high - relevantCandles[6].low;
-  
-  // Check if current range is smaller than all previous 6 ranges
-  for (let i = 0; i < 6; i++) {
-    const range = relevantCandles[i].high - relevantCandles[i].low;
-    if (currentRange >= range) return false;
+  // We analyze the *latest completed* candle (yesterday's close)
+  // or today's if the market is open. Let's assume the last candle in array is the target.
+  const targetIndex = candles.length - 1;
+  const targetRange = candles[targetIndex].high - candles[targetIndex].low;
+
+  // Compare with previous 6 ranges
+  for (let i = 1; i <= 6; i++) {
+    const prevIndex = targetIndex - i;
+    const range = candles[prevIndex].high - candles[prevIndex].low;
+    if (targetRange >= range) return false; // Found a smaller range previously, so not NR7
   }
-  
   return true;
 }
 
 export async function GET() {
   try {
-    const today = new Date();
-    const tenDaysAgo = new Date(today);
-    tenDaysAgo.setDate(today.getDate() - 15); // Buffer for weekends
-
-    const period1 = tenDaysAgo.toISOString().split('T')[0];
-
     const results = await Promise.all(TICKERS.map(async (symbol) => {
-      try {
-        const history = await yahooFinance.historical(symbol, {
-          period1: period1,
-          interval: '1d',
-        }) as any[];
+      const candles = await getDailyCandles(symbol);
+      
+      if (!candles || candles.length < 2) return null;
 
-        if (history.length < 7) return null;
+      const lastCandle = candles[candles.length - 1];
+      const prevCandle = candles[candles.length - 2];
+      
+      const insideBar = isInsideBar(lastCandle, prevCandle);
+      const nr7 = isNR7(candles);
 
-        const lastCandle = history[history.length - 1];
-        const prevCandle = history[history.length - 2];
-
-        // Ensure we are looking at a completed day or current active day
-        // For scan, usually looking for setup from YESTERDAY for TODAY's open
-        // OR Today's forming bar for tomorrow.
-        // Let's assume we want to find patterns in the *latest available candle*.
-        
-        const insideBar = isInsideBar(lastCandle, prevCandle);
-        const nr7 = isNR7(history);
-
-        if (insideBar || nr7) {
-          return {
-            symbol,
-            price: lastCandle.close,
-            date: lastCandle.date,
-            isInsideBar: insideBar,
-            isNR7: nr7,
-            volume: lastCandle.volume
-          };
-        }
-        return null;
-      } catch (err) {
-        console.error(`Failed to fetch ${symbol}`, err);
-        return null;
+      if (insideBar || nr7) {
+        return {
+          symbol,
+          price: lastCandle.close,
+          date: lastCandle.date.toISOString(),
+          isInsideBar: insideBar,
+          isNR7: nr7,
+          volume: lastCandle.volume
+        };
       }
+      return null;
     }));
 
     const opportunities = results.filter(r => r !== null);
