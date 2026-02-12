@@ -40,21 +40,29 @@ export default function ScannerTable({ data, isLoading }: Props) {
     if (!data) return [];
     
     return [...data].sort((a, b) => {
-      let aVal: any = a[keyToProp(sortConfig.key)];
-      let bVal: any = b[keyToProp(sortConfig.key)];
+      const propKey = keyToProp(sortConfig.key);
+      
+      // If sorting by 'setup', the value is computed below, so initial access doesn't matter much
+      // but TypeScript complains about 'setup' not being on Opportunity.
+      // We'll calculate score directly if key is setup, otherwise access prop.
+      
+      let aVal: any;
+      let bVal: any;
 
-      // Special handling for Setup logic (InsideBar/NR7 priority)
       if (sortConfig.key === 'setup') {
         const score = (item: Opportunity) => {
           let s = 0;
           if (item.isInsideBar) s += 2;
           if (item.isNR7) s += 1;
-          // Also factor in RSI extreme
           if (item.rsi && (item.rsi > 70 || item.rsi < 30)) s += 0.5;
           return s;
         };
         aVal = score(a);
         bVal = score(b);
+      } else {
+        // Safe property access for known keys
+        aVal = a[propKey as keyof Opportunity];
+        bVal = b[propKey as keyof Opportunity];
       }
 
       // Handle nulls
