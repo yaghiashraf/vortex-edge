@@ -19,9 +19,19 @@ export const maxDuration = 30;
 
 export async function GET() {
   try {
-    // Fetch SPY first to get baseline
-    const spyData = await fetchYahooData('SPY', '5d');
-    const spyChange = spyData?.change || 0;
+    // Fetch SPY first to get baseline — use 1mo for reliable candle data
+    let spyChange = 0;
+    const spyData = await fetchYahooData('SPY', '1mo');
+    if (spyData && Math.abs(spyData.change) > 0.0001) {
+      spyChange = spyData.change;
+    } else if (spyData?.candles?.length >= 2) {
+      // Explicit fallback: compute from candle data directly
+      const c = spyData.candles;
+      const prevClose = c[c.length - 2].close;
+      if (prevClose > 0) {
+        spyChange = ((spyData.price - prevClose) / prevClose) * 100;
+      }
+    }
 
     // Fetch sectors in small batches of 3 to avoid Yahoo rate limits
     const allResults: { sector: typeof SECTORS[0]; data: any }[] = [];
@@ -30,7 +40,7 @@ export async function GET() {
       const batch = SECTORS.slice(i, i + 3);
       const batchResults = await Promise.all(
         batch.map(async (sector) => {
-          const data = await fetchYahooData(sector.symbol, '5d');
+          const data = await fetchYahooData(sector.symbol, '1mo');
           return { sector, data };
         })
       );
@@ -43,13 +53,24 @@ export async function GET() {
     }
 
     const sectors = allResults
-      .map(({ sector, data }) => ({
-        ...sector,
-        price: data?.price || 0,
-        change: data?.change || 0,
-        relativeStrength: (data?.change || 0) - spyChange,
-        error: !data,
-      }))
+      .map(({ sector, data }) => {
+        let change = data?.change || 0;
+        // Explicit candle fallback if change is suspiciously 0
+        if (Math.abs(change) < 0.0001 && data?.candles?.length >= 2) {
+          const c = data.candles;
+          const prevClose = c[c.length - 2].close;
+          if (prevClose > 0) {
+            change = ((data.price - prevClose) / prevClose) * 100;
+          }
+        }
+        return {
+          ...sector,
+          price: data?.price || 0,
+          change,
+          relativeStrength: change - spyChange,
+          error: !data,
+        };
+      })
       .filter(d => !d.error && d.price > 0);
 
     sectors.sort((a, b) => b.relativeStrength - a.relativeStrength);

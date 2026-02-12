@@ -66,11 +66,56 @@ export default function ScannerTable({ data, isLoading }: Props) {
 
   const score = useCallback((item: Opportunity) => {
     let s = 0;
-    if (item.isInsideBar) s += 10;
-    if (item.isNR7) s += 10;
-    if (item.rvol && item.rvol > 1.2) s += 5;
-    if (item.rsi && (item.rsi > 70 || item.rsi < 30)) s += 5;
-    if (item.zScore && Math.abs(item.zScore) > 2) s += 3;
+
+    // Pattern compression (core signal for breakout day trades)
+    const hasIB = item.isInsideBar;
+    const hasNR7 = item.isNR7;
+    if (hasIB) s += 15;
+    if (hasNR7) s += 15;
+    if (hasIB && hasNR7) s += 10; // both = extreme compression bonus
+
+    // Volume confirmation (RVOL) — scaled, not binary
+    if (item.rvol) {
+      if (item.rvol >= 2.0) s += 12;
+      else if (item.rvol >= 1.5) s += 8;
+      else if (item.rvol >= 1.2) s += 4;
+    }
+
+    // ATR% — wider range = more movement potential
+    if (item.atrPct) {
+      if (item.atrPct >= 5) s += 10;
+      else if (item.atrPct >= 3) s += 6;
+      else if (item.atrPct >= 2) s += 3;
+    }
+
+    // Gap% — catalyst (momentum or mean reversion)
+    if (item.gapPct) {
+      const absGap = Math.abs(item.gapPct);
+      if (absGap >= 3) s += 8;
+      else if (absGap >= 1.5) s += 5;
+      else if (absGap >= 0.5) s += 2;
+    }
+
+    // RSI extremes — directional conviction
+    if (item.rsi) {
+      if (item.rsi > 80 || item.rsi < 20) s += 8;
+      else if (item.rsi > 70 || item.rsi < 30) s += 4;
+    }
+
+    // Z-Score — statistical anomaly
+    if (item.zScore) {
+      const absZ = Math.abs(item.zScore);
+      if (absZ > 3) s += 6;
+      else if (absZ > 2) s += 3;
+    }
+
+    // Confluence multiplier: pattern + volume = high probability
+    if ((hasIB || hasNR7) && item.rvol && item.rvol > 1.2) s += 8;
+    if ((hasIB || hasNR7) && item.rsi && (item.rsi > 70 || item.rsi < 30)) s += 6;
+
+    // Dollar volume bonus (liquid enough for day trading)
+    if (item.dollarVol && item.dollarVol >= 500) s += 3;
+
     return s;
   }, []);
 
@@ -147,6 +192,7 @@ export default function ScannerTable({ data, isLoading }: Props) {
               const isHighRvol = item.rvol && item.rvol > 1.2;
               const isZScoreExtreme = item.zScore && Math.abs(item.zScore) > 2;
               const isHighAtrPct = item.atrPct && item.atrPct > 3;
+              const itemScore = score(item);
               const isBigGap = item.gapPct && Math.abs(item.gapPct) > 1;
               const isHighDolVol = item.dollarVol && item.dollarVol > 500;
 
@@ -223,14 +269,20 @@ export default function ScannerTable({ data, isLoading }: Props) {
                   {/* SETUP */}
                   <td className={`px-2 py-0.5 text-left border-r border-zinc-900/50 font-bold text-[10px] pl-3 ${borderClass}`}>
                     <div className="flex items-center gap-1.5 flex-nowrap">
-                      {item.isInsideBar && <span className="bg-yellow-600 text-black px-1 py-0 rounded-sm text-[9px]">IB</span>}
-                      {item.isNR7 && <span className="bg-cyan-600 text-black px-1 py-0 rounded-sm text-[9px]">NR7</span>}
-                      {isHighRvol && isPattern && <span className="text-blue-400 text-[9px]">V+</span>}
-                      {isRsiHigh && isPattern && <span className="text-red-400 text-[9px]">OB</span>}
-                      {isRsiLow && isPattern && <span className="text-green-400 text-[9px]">OS</span>}
-                      {!isPattern && isRsiHigh && <span className="text-red-500 text-[9px]">OB</span>}
-                      {!isPattern && isRsiLow && <span className="text-green-500 text-[9px]">OS</span>}
-                      {!isPattern && isHighRvol && <span className="text-blue-500 text-[9px]">VOL</span>}
+                      {itemScore > 0 && (
+                        <span title={`Opportunity Score: ${itemScore} — Higher = better day trading setup`} className={`text-[8px] tabular-nums w-4 text-right cursor-help ${itemScore >= 30 ? 'text-orange-400' : itemScore >= 15 ? 'text-zinc-400' : 'text-zinc-600'}`}>
+                          {itemScore}
+                        </span>
+                      )}
+                      {item.isInsideBar && <span title="Inside Bar — Today's range is within yesterday's range. Compression pattern signals potential breakout." className="bg-yellow-600 text-black px-1 py-0 rounded-sm text-[9px] cursor-help">IB</span>}
+                      {item.isNR7 && <span title="Narrowest Range 7 — Today has the smallest range in 7 days. Extreme compression often precedes explosive moves." className="bg-cyan-600 text-black px-1 py-0 rounded-sm text-[9px] cursor-help">NR7</span>}
+                      {isConfluence && <span title="Confluence — Multiple signals align: pattern + volume/RSI. Highest probability setup." className="bg-indigo-500 text-white px-1 py-0 rounded-sm text-[9px] cursor-help">CONF</span>}
+                      {isHighRvol && isPattern && <span title="Volume Spike — Relative volume >1.2x average. Unusual institutional activity during compression." className="text-blue-400 text-[9px] cursor-help">V+</span>}
+                      {isRsiHigh && isPattern && <span title="Overbought — RSI >70. Momentum extreme with pattern compression." className="text-red-400 text-[9px] cursor-help">OB</span>}
+                      {isRsiLow && isPattern && <span title="Oversold — RSI <30. Momentum extreme with pattern compression." className="text-green-400 text-[9px] cursor-help">OS</span>}
+                      {!isPattern && isRsiHigh && <span title="Overbought — RSI >70. Extended momentum, potential reversal." className="text-red-500 text-[9px] cursor-help">OB</span>}
+                      {!isPattern && isRsiLow && <span title="Oversold — RSI <30. Depressed momentum, potential bounce." className="text-green-500 text-[9px] cursor-help">OS</span>}
+                      {!isPattern && isHighRvol && <span title="Volume Spike — Relative volume >1.2x average. Unusual activity without pattern." className="text-blue-500 text-[9px] cursor-help">VOL</span>}
                     </div>
                   </td>
 

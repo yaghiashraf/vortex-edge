@@ -1,9 +1,34 @@
 <svg width="200" height="40" viewBox="0 0 200 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- Symbol -->
-  <path d="M15 10L20 30L25 10" stroke="#f97316" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M10 10L20 30L30 10" stroke="#ea580c" stroke-width="1.5" stroke-opacity="0.5"/>
-  
-  <!-- Text -->
-  <text x="40" y="26" fill="#f97316" font-family="monospace" font-size="16" font-weight="bold" letter-spacing="1">VORTEX</text>
+  <defs>
+    <!-- Electric blue glow filter -->
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="2" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+    <!-- Pulse animation for the V symbol -->
+    <style>
+      @keyframes vortexPulse {
+        0%, 100% { opacity: 0.6; }
+        50% { opacity: 1; }
+      }
+      @keyframes glowPulse {
+        0%, 100% { filter: drop-shadow(0 0 2px #3b82f6); }
+        50% { filter: drop-shadow(0 0 6px #60a5fa) drop-shadow(0 0 12px #3b82f680); }
+      }
+      .vortex-symbol { animation: vortexPulse 3s ease-in-out infinite; }
+      .vortex-text { animation: glowPulse 3s ease-in-out infinite; }
+    </style>
+  </defs>
+
+  <!-- V Symbol — electric blue with glow -->
+  <g class="vortex-symbol">
+    <path d="M10 10L20 30L30 10" stroke="#3b82f6" stroke-width="1.5" stroke-opacity="0.3"/>
+    <path d="M15 10L20 30L25 10" stroke="#60a5fa" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/>
+  </g>
+
+  <!-- VORTEX text — electric blue with glow animation -->
+  <text x="40" y="26" fill="#3b82f6" font-family="monospace" font-size="16" font-weight="bold" letter-spacing="1" class="vortex-text">VORTEX</text>
+
+  <!-- EDGE text — stays muted -->
   <text x="105" y="26" fill="#a1a1aa" font-family="monospace" font-size="16" font-weight="normal" letter-spacing="1">EDGE</text>
 </svg>
