@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Activity, Zap, BarChart3, RefreshCw, ExternalLink } from 'lucide-react';
+import { Activity, Zap, BarChart3, RefreshCw, Terminal, Globe, ShieldCheck } from 'lucide-react';
 import SectorChart from '@/components/SectorChart';
 import ScannerTable from '@/components/ScannerTable';
 
@@ -17,7 +17,6 @@ export default function Home() {
     setLoadingScanner(true);
 
     try {
-      // Parallel fetch
       const [sectorRes, scannerRes] = await Promise.all([
         fetch('/api/market-pulse'),
         fetch('/api/scanner')
@@ -42,101 +41,105 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-200 font-sans selection:bg-blue-500/30">
-      {/* Navbar */}
-      <nav className="border-b border-slate-800 bg-slate-950/80 backdrop-blur sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/20">
-              <Zap className="w-5 h-5 text-white" fill="currentColor" />
-            </div>
-            <span className="text-xl font-bold tracking-tight text-white">
-              VORTEX <span className="text-blue-500">EDGE</span>
-            </span>
-          </div>
-          
-          <div className="flex items-center gap-4">
-            <a 
-              href="https://vortexcapitalgroup.com" 
-              target="_blank" 
-              rel="noreferrer"
-              className="text-sm text-slate-400 hover:text-white transition-colors hidden sm:block"
-            >
-              Vortex Capital Group
-            </a>
-            <button 
-              onClick={fetchData}
-              className="p-2 rounded-md hover:bg-slate-800 text-slate-400 hover:text-white transition-all active:scale-95"
-              title="Refresh Data"
-            >
-              <RefreshCw className={`w-5 h-5 ${loadingSectors ? 'animate-spin' : ''}`} />
-            </button>
-          </div>
+    <div className="h-screen w-screen bg-black text-orange-500 font-mono overflow-hidden flex flex-col selection:bg-orange-500 selection:text-black">
+      {/* Top Status Bar (Fake Terminal Header) */}
+      <header className="h-8 bg-zinc-900 border-b border-zinc-800 flex items-center justify-between px-2 text-xs uppercase tracking-widest shrink-0">
+        <div className="flex items-center gap-4">
+          <span className="flex items-center gap-1 font-bold text-orange-500">
+            <Terminal className="w-3 h-3" /> VORTEX_TERMINAL_V1
+          </span>
+          <span className="text-zinc-600">|</span>
+          <span className="text-zinc-400">STATUS: <span className="text-green-500">CONNECTED</span></span>
+          <span className="text-zinc-600">|</span>
+          <span className="text-zinc-400">DATA: <span className="text-blue-400">YAHOO_FINANCE_STREAM</span></span>
         </div>
-      </nav>
+        <div className="flex items-center gap-4">
+           <span className="text-zinc-500">{lastUpdated || '--:--:--'}</span>
+           <button 
+             onClick={fetchData} 
+             className="hover:text-white transition-colors"
+             title="REFRESH DATA"
+           >
+             [REFRESH]
+           </button>
+        </div>
+      </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      {/* Main Grid Layout */}
+      <div className="flex-1 grid grid-cols-12 gap-px bg-zinc-900 overflow-hidden">
         
-        {/* Header Section */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-white mb-2">Market Intelligence</h1>
-            <p className="text-slate-400 max-w-2xl">
-              Real-time relative strength analysis and volatility contraction scanning for US Equities. 
-              Identify leaders, laggards, and coiled setups for the next session.
-            </p>
+        {/* Left Panel: Market Pulse (Sectors) - 3 Columns */}
+        <div className="col-span-12 md:col-span-4 lg:col-span-3 bg-black flex flex-col border-r border-zinc-800 p-2">
+          <div className="flex items-center justify-between mb-2 pb-1 border-b border-zinc-800">
+            <h2 className="text-xs font-bold text-orange-400 flex items-center gap-1">
+              <BarChart3 className="w-3 h-3" /> SECTOR_ROTATION
+            </h2>
+            <span className="text-[10px] text-zinc-600">REL_STR_VS_SPY</span>
           </div>
-          <div className="text-right hidden md:block">
-            <div className="text-xs font-mono text-slate-500 uppercase tracking-wider mb-1">Last Update</div>
-            <div className="text-sm font-medium text-slate-300">{lastUpdated || '--:--:--'}</div>
+          
+          <div className="flex-1 min-h-0 relative">
+             {loadingSectors || !sectorData ? (
+               <div className="absolute inset-0 flex items-center justify-center text-zinc-700 animate-pulse text-xs">
+                 LOADING_SECTORS...
+               </div>
+             ) : sectorData?.error || !sectorData?.sectors ? (
+               <div className="absolute inset-0 flex items-center justify-center text-red-900 text-xs text-center px-4 border border-red-900/20 bg-red-950/10">
+                 ! DATA_FEED_ERROR !
+                 <br/>
+                 UNABLE TO RETRIEVE SECTOR DATA
+               </div>
+             ) : (
+               <SectorChart data={sectorData.sectors} spyChange={sectorData.spyChange} />
+             )}
+          </div>
+
+          {/* Mini News Ticker Placeholder at bottom left */}
+          <div className="h-24 border-t border-zinc-800 mt-2 pt-2">
+            <h3 className="text-[10px] font-bold text-zinc-500 mb-1 uppercase">SYSTEM_ALERTS</h3>
+            <div className="text-[10px] text-zinc-400 leading-tight space-y-1 font-mono">
+              <p>> MONITORING 100+ TICKERS</p>
+              <p>> VOLATILITY SCAN: ACTIVE</p>
+              <p>> RSI FILTER: ENABLED (14)</p>
+              <p>> TREND FILTER: 20-DAY SMA</p>
+            </div>
           </div>
         </div>
 
-        {/* Top Section: Sector Radar */}
-        <section>
-          <div className="flex items-center gap-2 mb-4">
-            <BarChart3 className="w-5 h-5 text-blue-500" />
-            <h2 className="text-xl font-semibold text-white">Sector Relative Strength</h2>
+        {/* Right Panel: Scanner Table - 9 Columns */}
+        <div className="col-span-12 md:col-span-8 lg:col-span-9 bg-black flex flex-col p-2">
+           <div className="flex items-center justify-between mb-2 pb-1 border-b border-zinc-800">
+            <h2 className="text-xs font-bold text-orange-400 flex items-center gap-1">
+              <Activity className="w-3 h-3" /> VOLATILITY_SCANNER
+            </h2>
+            <div className="flex items-center gap-2 text-[10px]">
+              <span className="px-1.5 py-0.5 bg-yellow-600/20 text-yellow-500 border border-yellow-600/30">INSIDE_BAR</span>
+              <span className="px-1.5 py-0.5 bg-cyan-600/20 text-cyan-500 border border-cyan-600/30">NR7</span>
+              <span className="px-1.5 py-0.5 bg-red-600/20 text-red-500 border border-red-600/30">RSI_O/B</span>
+              <span className="px-1.5 py-0.5 bg-green-600/20 text-green-500 border border-green-600/30">RSI_O/S</span>
+            </div>
           </div>
           
-          {loadingSectors ? (
-            <div className="w-full h-[350px] bg-slate-900/50 rounded-lg border border-slate-800 animate-pulse" />
-          ) : sectorData?.error || !sectorData?.sectors ? (
-            <div className="w-full h-[350px] bg-slate-900/50 rounded-lg border border-slate-800 flex items-center justify-center text-red-400">
-              Unable to load market data. Please try again later.
-            </div>
-          ) : (
-            <SectorChart data={sectorData.sectors} spyChange={sectorData.spyChange} />
-          )}
-        </section>
-
-        {/* Bottom Section: Scanner */}
-        <section>
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <Activity className="w-5 h-5 text-yellow-500" />
-              <h2 className="text-xl font-semibold text-white">Volatility Contraction Scanner</h2>
-            </div>
-            <span className="text-xs bg-slate-800 text-slate-400 px-2 py-1 rounded border border-slate-700">
-              Scanned: {scannerData?.scannedCount || 0} Assets
-            </span>
+          <div className="flex-1 min-h-0 border border-zinc-900 relative">
+             <ScannerTable 
+               data={scannerData?.opportunities || []} 
+               isLoading={loadingScanner} 
+             />
           </div>
+        </div>
 
-          <p className="text-sm text-slate-500 mb-4">
-            Scanning top liquid assets for <span className="text-yellow-500 font-medium">Inside Bar</span> and <span className="text-cyan-400 font-medium">NR7</span> patterns. These setups often precede explosive expansions.
-          </p>
+      </div>
 
-          <ScannerTable 
-            data={scannerData?.opportunities || []} 
-            isLoading={loadingScanner} 
-          />
-        </section>
-
-        {/* Footer */}
-        <footer className="border-t border-slate-800 pt-8 mt-12 text-center text-slate-600 text-sm">
-          <p>© {new Date().getFullYear()} Vortex Capital Group. For educational purposes only.</p>
-        </footer>
-      </main>
+      {/* Bottom Footer Line */}
+      <footer className="h-6 bg-zinc-950 border-t border-zinc-900 flex items-center justify-between px-2 text-[10px] text-zinc-600 shrink-0">
+        <div className="flex items-center gap-4">
+          <span>Logged in as: TRADER_01</span>
+          <span>SESSION: ACTIVE</span>
+        </div>
+        <div className="flex items-center gap-4">
+          <a href="https://vortexcapitalgroup.com" target="_blank" className="hover:text-orange-500 transition-colors uppercase">VORTEX_CAPITAL_GROUP_LLC</a>
+          <span>© 2026</span>
+        </div>
+      </footer>
     </div>
   );
 }
