@@ -1,6 +1,6 @@
 'use client';
 
-import { Activity, ArrowUpDown, ChevronUp, ChevronDown, BarChart2 } from 'lucide-react';
+import { Activity, ArrowUpDown, ChevronUp, ChevronDown, BarChart2, Zap } from 'lucide-react';
 import { useState, useMemo } from 'react';
 
 interface Opportunity {
@@ -14,6 +14,7 @@ interface Opportunity {
   trend: 'Up' | 'Down';
   rvol?: number;
   atr?: number;
+  zScore?: number;
 }
 
 interface Props {
@@ -21,7 +22,7 @@ interface Props {
   isLoading: boolean;
 }
 
-type SortKey = 'symbol' | 'price' | 'trend' | 'rsi' | 'rvol' | 'atr' | 'setup';
+type SortKey = 'symbol' | 'price' | 'trend' | 'rsi' | 'rvol' | 'atr' | 'zScore' | 'setup';
 type SortDirection = 'asc' | 'desc';
 
 export default function ScannerTable({ data, isLoading }: Props) {
@@ -31,7 +32,7 @@ export default function ScannerTable({ data, isLoading }: Props) {
   });
 
   const handleSort = (key: SortKey) => {
-    let direction: SortDirection = 'desc'; // Default to Descending for numbers
+    let direction: SortDirection = 'desc'; 
     if (sortConfig.key === key && sortConfig.direction === 'desc') {
       direction = 'asc';
     }
@@ -46,12 +47,18 @@ export default function ScannerTable({ data, isLoading }: Props) {
       let bVal: any;
 
       if (sortConfig.key === 'setup') {
+        // Scoring Algorithm for "Best Setup"
         const score = (item: Opportunity) => {
           let s = 0;
-          if (item.isInsideBar) s += 3;
-          if (item.isNR7) s += 2;
-          if (item.rvol && item.rvol > 2.0) s += 1.5; // High RVOL boosts rank
-          if (item.rsi && (item.rsi > 70 || item.rsi < 30)) s += 1;
+          // Core Patterns
+          if (item.isInsideBar) s += 10;
+          if (item.isNR7) s += 10;
+          
+          // Confluence Boosters
+          if (item.rvol && item.rvol > 1.2) s += 5;
+          if (item.rsi && (item.rsi > 70 || item.rsi < 30)) s += 5;
+          if (item.zScore && Math.abs(item.zScore) > 2) s += 3;
+          
           return s;
         };
         aVal = score(a);
@@ -71,22 +78,9 @@ export default function ScannerTable({ data, isLoading }: Props) {
     });
   }, [data, sortConfig]);
 
-  if (isLoading) {
-    return (
-      <div className="w-full h-full flex flex-col justify-center items-center text-orange-500 font-mono text-sm tracking-wide bg-black/50 border border-orange-500/20 animate-pulse">
-        <span>[+] SCANNING MARKET DATA...</span>
-        <span className="text-[10px] text-zinc-600 mt-2">PROCESSING 200+ TICKERS</span>
-      </div>
-    );
-  }
-
-  if (!data || data.length === 0) {
-    return (
-      <div className="w-full h-full flex flex-col items-center justify-center text-orange-500 border border-dashed border-zinc-800 bg-zinc-950/20 font-mono">
-        <span className="text-xl font-bold mb-2">NO PATTERNS DETECTED</span>
-        <span className="text-xs text-zinc-500">MARKET CONDITIONS QUIET. AWAITING VOLATILITY.</span>
-      </div>
-    );
+  // Loading State (handled by parent mostly, but good for empty state)
+  if (isLoading && data.length === 0) {
+    return null; // Don't show empty skeleton if we have a parent loading overlay
   }
 
   return (
@@ -98,11 +92,8 @@ export default function ScannerTable({ data, isLoading }: Props) {
             <SortHeader label="PRICE" sortKey="price" currentSort={sortConfig} onSort={handleSort} align="right" />
             <SortHeader label="TREND" sortKey="trend" currentSort={sortConfig} onSort={handleSort} align="center" />
             <SortHeader label="RSI(14)" sortKey="rsi" currentSort={sortConfig} onSort={handleSort} align="center" />
-            
-            {/* New Columns */}
             <SortHeader label="RVOL" sortKey="rvol" currentSort={sortConfig} onSort={handleSort} align="center" />
-            <SortHeader label="ATR(14)" sortKey="atr" currentSort={sortConfig} onSort={handleSort} align="center" />
-            
+            <SortHeader label="Z-SCORE" sortKey="zScore" currentSort={sortConfig} onSort={handleSort} align="center" />
             <SortHeader label="SETUP / SIGNAL" sortKey="setup" currentSort={sortConfig} onSort={handleSort} align="left" paddingLeft="pl-4" />
             <th className="px-3 py-2 uppercase font-normal text-right text-zinc-400 border-b border-orange-500/30 pr-4 cursor-default">VOL (M)</th>
           </tr>
@@ -111,29 +102,35 @@ export default function ScannerTable({ data, isLoading }: Props) {
           {sortedData.map((item, idx) => {
             const isRsiHigh = item.rsi && item.rsi > 70;
             const isRsiLow = item.rsi && item.rsi < 30;
-            const isHighRvol = item.rvol && item.rvol > 1.5;
+            const isHighRvol = item.rvol && item.rvol > 1.2;
+            const isZScoreExtreme = item.zScore && Math.abs(item.zScore) > 2;
             
-            const isSetup = item.isInsideBar || item.isNR7;
-            
+            const isPattern = item.isInsideBar || item.isNR7;
+            const isConfluence = isPattern && (isHighRvol || isRsiHigh || isRsiLow);
+
+            // Row Styling
             let bgClass = idx % 2 === 0 ? 'bg-zinc-950/30' : 'bg-black';
             let borderClass = 'border-b border-zinc-900/30';
+            let textClass = 'text-zinc-300';
             
-            if (isSetup) {
-              bgClass = 'bg-orange-950/30';
-            } else if (isHighRvol) {
-               bgClass = 'bg-blue-950/20'; // Distinct color for high volume plays
+            if (isConfluence) {
+              bgClass = 'bg-indigo-950/30 hover:bg-indigo-900/40'; // Special Super Setup
+              textClass = 'text-indigo-100 font-bold';
+            } else if (isPattern) {
+              bgClass = 'bg-orange-950/20 hover:bg-orange-900/30';
+              textClass = 'text-orange-100';
             }
 
             return (
               <tr key={item.symbol} className={`${bgClass} hover:bg-zinc-900 transition-colors cursor-default group h-8 relative`}>
                 {/* Ticker Cell */}
-                <td className={`px-3 py-1 font-bold ${isSetup ? 'text-white' : 'text-orange-400/80'} border-r border-zinc-900/50 ${borderClass} relative`}>
-                  {isSetup && <div className="absolute left-0 top-0 bottom-0 w-1 bg-orange-500"></div>}
-                  {!isSetup && isHighRvol && <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-500"></div>}
+                <td className={`px-3 py-1 font-bold border-r border-zinc-900/50 ${borderClass} relative ${isConfluence ? 'text-indigo-400' : isPattern ? 'text-orange-400' : 'text-zinc-400'}`}>
+                  {isConfluence && <div className="absolute left-0 top-0 bottom-0 w-1 bg-indigo-500 animate-pulse"></div>}
+                  {!isConfluence && isPattern && <div className="absolute left-0 top-0 bottom-0 w-1 bg-orange-500"></div>}
                   {item.symbol}
                 </td>
                 
-                <td className={`px-3 py-1 text-right border-r border-zinc-900/50 tabular-nums text-zinc-300 ${borderClass}`}>
+                <td className={`px-3 py-1 text-right border-r border-zinc-900/50 tabular-nums ${textClass} ${borderClass}`}>
                   {item.price.toFixed(2)}
                 </td>
                 
@@ -145,34 +142,41 @@ export default function ScannerTable({ data, isLoading }: Props) {
                 
                 <td className={`px-3 py-1 text-center border-r border-zinc-900/50 tabular-nums ${borderClass}`}>
                   <span className={`px-1 rounded-sm ${
-                    isRsiHigh ? 'bg-red-900 text-red-100 font-bold' : 
-                    isRsiLow ? 'bg-green-900 text-green-100 font-bold' : 
+                    isRsiHigh ? 'bg-red-900/50 text-red-200 font-bold' : 
+                    isRsiLow ? 'bg-green-900/50 text-green-200 font-bold' : 
                     'text-zinc-500'
                   }`}>
                     {item.rsi?.toFixed(0) || '--'}
                   </span>
                 </td>
 
-                {/* RVOL Column */}
                 <td className={`px-3 py-1 text-center border-r border-zinc-900/50 tabular-nums ${borderClass}`}>
-                  <span className={`font-bold ${item.rvol && item.rvol > 2.0 ? 'text-blue-400' : item.rvol && item.rvol > 1.2 ? 'text-zinc-300' : 'text-zinc-600'}`}>
+                  <span className={`font-bold ${item.rvol && item.rvol > 1.5 ? 'text-blue-400' : 'text-zinc-600'}`}>
                      {item.rvol ? item.rvol.toFixed(1) + 'x' : '-'}
                   </span>
                 </td>
 
-                {/* ATR Column */}
-                <td className={`px-3 py-1 text-center border-r border-zinc-900/50 tabular-nums text-zinc-500 ${borderClass}`}>
-                   {item.atr ? item.atr.toFixed(2) : '-'}
+                <td className={`px-3 py-1 text-center border-r border-zinc-900/50 tabular-nums ${borderClass}`}>
+                   <span className={`${isZScoreExtreme ? 'text-purple-400 font-bold' : 'text-zinc-600'}`}>
+                     {item.zScore ? item.zScore.toFixed(1) : '-'}
+                   </span>
                 </td>
                 
                 <td className={`px-3 py-1 text-left border-r border-zinc-900/50 font-bold text-[10px] pl-4 ${borderClass}`}>
                   <div className="flex items-center gap-2">
+                    {/* Setup Badges */}
                     {item.isInsideBar && <span className="bg-yellow-600 text-black px-1.5 py-0.5 rounded-sm shadow-sm shadow-yellow-500/20">INSIDE</span>}
                     {item.isNR7 && <span className="bg-cyan-600 text-black px-1.5 py-0.5 rounded-sm shadow-sm shadow-cyan-500/20">NR7</span>}
                     
-                    {!item.isInsideBar && !item.isNR7 && isRsiHigh && <span className="text-red-500 flex items-center gap-1"><Activity className="w-3 h-3"/> O/BOUGHT</span>}
-                    {!item.isInsideBar && !item.isNR7 && isRsiLow && <span className="text-green-500 flex items-center gap-1"><Activity className="w-3 h-3"/> O/SOLD</span>}
-                    {!item.isInsideBar && !item.isNR7 && isHighRvol && <span className="text-blue-500 flex items-center gap-1"><BarChart2 className="w-3 h-3"/> VOL_SPIKE</span>}
+                    {/* Confluence Signals */}
+                    {isHighRvol && isPattern && <span className="text-blue-400 flex items-center gap-1"><BarChart2 className="w-3 h-3"/> VOL+</span>}
+                    {isRsiHigh && isPattern && <span className="text-red-400 flex items-center gap-1"><Activity className="w-3 h-3"/> OB</span>}
+                    {isRsiLow && isPattern && <span className="text-green-400 flex items-center gap-1"><Activity className="w-3 h-3"/> OS</span>}
+                    
+                    {/* If NO Pattern but Signal */}
+                    {!isPattern && isRsiHigh && <span className="text-red-500">O/BOUGHT</span>}
+                    {!isPattern && isRsiLow && <span className="text-green-500">O/SOLD</span>}
+                    {!isPattern && isHighRvol && <span className="text-blue-500">VOL SPIKE</span>}
                   </div>
                 </td>
                 
@@ -195,7 +199,6 @@ function keyToProp(key: SortKey): keyof Opportunity | 'setup' {
 
 function SortHeader({ label, sortKey, currentSort, onSort, align = 'left', paddingLeft = '' }: any) {
   const isActive = currentSort.key === sortKey;
-  
   return (
     <th 
       className={`px-3 py-2 uppercase font-normal text-zinc-400 border-b border-orange-500/30 cursor-pointer hover:text-orange-400 select-none text-${align} ${paddingLeft}`}

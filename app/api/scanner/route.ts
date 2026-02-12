@@ -2,7 +2,7 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { fetchYahooData } from '@/lib/yahoo';
 import { TICKERS } from '@/lib/tickers';
-import { calculateRSI, calculateSMA, calculateATR } from '@/lib/indicators';
+import { calculateRSI, calculateSMA, calculateATR, calculateZScore } from '@/lib/indicators';
 
 interface Candle {
   date: Date;
@@ -43,7 +43,7 @@ async function fetchInChunks(tickers: string[], chunkSize: number) {
       try {
         const data = await fetchYahooData(symbol);
         
-        if (!data || !data.candles || data.candles.length < 15) return null;
+        if (!data || !data.candles || data.candles.length < 20) return null;
 
         const history = data.candles;
         const lastCandle = history[history.length - 1];
@@ -51,10 +51,12 @@ async function fetchInChunks(tickers: string[], chunkSize: number) {
         const closePrices = history.map((c: Candle) => c.close);
         const volumeArray = history.map((c: Candle) => c.volume);
         
+        // Technicals
         const rsi = calculateRSI(closePrices, 14); 
         const atr = calculateATR(history, 14);     
         const avgVol = calculateSMA(volumeArray.slice(0, -1), 14); 
         const rvol = avgVol && avgVol > 0 ? (data.volume / avgVol) : 0;
+        const zScore = calculateZScore(closePrices, 20);
 
         const insideBar = isInsideBar(lastCandle, prevCandle);
         const nr7 = isNR7(history);
@@ -64,35 +66,36 @@ async function fetchInChunks(tickers: string[], chunkSize: number) {
 
         const isRSIHigh = rsi && rsi > 70;
         const isRSILow = rsi && rsi < 30;
+        const isTrendUp = trend === 'Up';
 
-        // LOOSENED FILTERS:
-        // 1. Setup (Inside/NR7)
-        // 2. Extreme RSI
-        // 3. RVOL > 1.2 (Lowered from 1.5)
-        // 4. Large Cap (> 50 price) + Trend Up (Just to show *something* good)
-        const isGoodTrend = trend === 'Up' && data.price > 50;
+        // Filter Logic:
+        // We want to return almost everything that isn't complete garbage, 
+        // but flag the good stuff.
+        // Actually, let's return EVERYTHING that successfully fetched, 
+        // so we can calculate Market Breadth accurately on the client.
+        // But we discard "penny stocks" or very low volume to keep it clean.
+        
+        if (data.price < 5) return null;
 
-        if (data.price > 5 && (insideBar || nr7 || isRSIHigh || isRSILow || rvol > 1.2 || isGoodTrend)) {
-          return {
-            symbol,
-            price: data.price,
-            date: lastCandle.date,
-            isInsideBar: insideBar,
-            isNR7: nr7,
-            volume: data.volume,
-            rsi: rsi ? parseFloat(rsi.toFixed(2)) : null,
-            trend: trend,
-            rvol: parseFloat(rvol.toFixed(2)),
-            atr: atr ? parseFloat(atr.toFixed(2)) : null
-          };
-        }
-        return null;
+        return {
+          symbol,
+          price: data.price,
+          change: data.change, // Percent change for breadth
+          date: lastCandle.date,
+          isInsideBar: insideBar,
+          isNR7: nr7,
+          volume: data.volume,
+          rsi: rsi ? parseFloat(rsi.toFixed(2)) : null,
+          trend: trend,
+          rvol: parseFloat(rvol.toFixed(2)),
+          atr: atr ? parseFloat(atr.toFixed(2)) : null,
+          zScore: zScore ? parseFloat(zScore.toFixed(2)) : null
+        };
       } catch (err) {
         return null;
       }
     }));
     results.push(...chunkResults);
-    // Increased delay to 100ms
     await new Promise(resolve => setTimeout(resolve, 100));
   }
   return results;
@@ -119,7 +122,6 @@ export async function GET(req: NextRequest) {
     const currentBatch = TICKERS.slice(start, end);
     const hasMore = end < TICKERS.length;
 
-    // Concurrency 5
     const rawResults = await fetchInChunks(currentBatch, 5);
     const opportunities = rawResults.filter(r => r !== null);
 

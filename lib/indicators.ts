@@ -1,30 +1,20 @@
 // vortex-edge/lib/indicators.ts
 
-/**
- * Calculates the Relative Strength Index (RSI).
- * @param closePrices Array of closing prices.
- * @param period Lookback period (default 14).
- */
 export function calculateRSI(closePrices: number[], period: number = 14): number | null {
   if (closePrices.length < period + 1) return null;
 
   let gains = 0;
   let losses = 0;
 
-  // First RSI calculation
   for (let i = 1; i <= period; i++) {
     const change = closePrices[i] - closePrices[i - 1];
-    if (change > 0) {
-      gains += change;
-    } else {
-      losses -= change;
-    }
+    if (change > 0) gains += change;
+    else losses -= change;
   }
 
   let avgGain = gains / period;
   let avgLoss = losses / period;
 
-  // Subsequent calculations (Wilder's Smoothing)
   for (let i = period + 1; i < closePrices.length; i++) {
     const change = closePrices[i] - closePrices[i - 1];
     let gain = 0;
@@ -42,35 +32,16 @@ export function calculateRSI(closePrices: number[], period: number = 14): number
   return 100 - (100 / (1 + rs));
 }
 
-/**
- * Calculates the Simple Moving Average (SMA) of an array.
- * @param values Array of numbers (prices or volumes).
- * @param period Lookback period.
- */
 export function calculateSMA(values: number[], period: number): number | null {
   if (values.length < period) return null;
-
-  // We analyze the END of the array (most recent)
-  // But wait, if we want SMA of the *previous* N days to compare with today?
-  // Usually RVOL = Today / Avg(Previous 20).
-  // So we take slice(-period - 1, -1) if we want strictly previous.
-  // Or just slice(-period) if we want rolling.
-  // Let's use the last `period` complete candles.
-  
   const slice = values.slice(-period);
   const sum = slice.reduce((acc, val) => acc + val, 0);
   return sum / period;
 }
 
-/**
- * Calculates the Average True Range (ATR).
- * @param candles OHLC candles array.
- * @param period Lookback period (default 14).
- */
 export function calculateATR(candles: any[], period: number = 14): number | null {
   if (candles.length < period + 1) return null;
 
-  // Function to calculate True Range
   const trueRange = (i: number) => {
     const high = candles[i].high;
     const low = candles[i].low;
@@ -79,17 +50,43 @@ export function calculateATR(candles: any[], period: number = 14): number | null
   };
 
   let trSum = 0;
-  // First TR sum
   for (let i = 1; i <= period; i++) {
     trSum += trueRange(i);
   }
 
   let atr = trSum / period;
 
-  // Wilder's Smoothing
   for (let i = period + 1; i < candles.length; i++) {
     atr = ((atr * (period - 1)) + trueRange(i)) / period;
   }
 
   return atr;
+}
+
+/**
+ * Calculates the Standard Deviation of an array.
+ */
+export function calculateStdDev(values: number[], period: number): number | null {
+  if (values.length < period) return null;
+  const slice = values.slice(-period);
+  const mean = slice.reduce((a, b) => a + b, 0) / period;
+  const squareDiffs = slice.map(value => Math.pow(value - mean, 2));
+  const avgSquareDiff = squareDiffs.reduce((a, b) => a + b, 0) / period;
+  return Math.sqrt(avgSquareDiff);
+}
+
+/**
+ * Calculates Z-Score: (Current Price - SMA) / StdDev
+ * Measures how many standard deviations the price is from the mean.
+ */
+export function calculateZScore(closePrices: number[], period: number = 20): number | null {
+  if (closePrices.length < period) return null;
+  
+  const currentPrice = closePrices[closePrices.length - 1];
+  const sma = calculateSMA(closePrices, period);
+  const stdDev = calculateStdDev(closePrices, period);
+
+  if (sma === null || stdDev === null || stdDev === 0) return null;
+
+  return (currentPrice - sma) / stdDev;
 }
