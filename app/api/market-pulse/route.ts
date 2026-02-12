@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { fetchYahooData } from '@/lib/yahoo';
 
+// Keep the same list, just to be consistent
 const SECTORS = [
   { symbol: 'XLK', name: 'Technology' },
   { symbol: 'XLF', name: 'Financials' },

@@ -1,10 +1,6 @@
 import { NextResponse } from 'next/server';
 import { fetchYahooData } from '@/lib/yahoo';
-
-const TICKERS = [
-  'NVDA', 'TSLA', 'AMD', 'AAPL', 'MSFT', 'AMZN', 'GOOGL', 'META', 'NFLX', 
-  'SPY', 'QQQ', 'IWM', 'COIN', 'MSTR', 'PLTR', 'SOFI', 'MARA', 'GME', 'HOOD', 'ROKU'
-];
+import { TICKERS } from '@/lib/tickers';
 
 interface Candle {
   date: Date;
@@ -23,11 +19,11 @@ function isInsideBar(current: Candle, previous: Candle): boolean {
 function isNR7(candles: Candle[]): boolean {
   if (candles.length < 8) return false;
   
-  // Last completed candle is at end-1 (today's candle is actively forming)
-  // Or if market is closed, it's the last one.
-  // Yahoo returns `regularMarketPrice` as live.
-  // The `chart` endpoint returns historical candles.
-  // Let's assume the last candle in the array is the one we analyze for "setup".
+  // Last COMPLETED candle is typically used for setup (Yesterday).
+  // But if market is OPEN, the last candle is TODAY (forming).
+  // We want to find stocks that *finished* yesterday in a setup, ready for today.
+  // OR stocks that are currently forming a setup intraday (less reliable).
+  // Let's assume we want to scan the LAST AVAILABLE candle against previous.
   
   const targetIndex = candles.length - 1;
   const targetRange = candles[targetIndex].high - candles[targetIndex].low;
@@ -58,7 +54,7 @@ export async function GET() {
       if (insideBar || nr7) {
         return {
           symbol,
-          price: data.price,
+          price: data.price, // Live price
           date: lastCandle.date,
           isInsideBar: insideBar,
           isNR7: nr7,
@@ -70,6 +66,9 @@ export async function GET() {
 
     const opportunities = results.filter(r => r !== null);
 
+    // If still empty after checking 50+ tickers, maybe fallback to a "Top Gainers" list?
+    // No, stick to the strategy. If no setups, then no setups.
+    
     return NextResponse.json({ 
       opportunities,
       scannedCount: TICKERS.length,
