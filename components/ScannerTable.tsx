@@ -151,19 +151,20 @@ export default function ScannerTable({ data, isLoading }: Props) {
     <div className="h-full w-full flex flex-col bg-black relative">
       {/* Search Bar */}
       {showSearch && (
-        <div className="h-9 flex items-center gap-2 px-3 bg-zinc-950 border-b border-zinc-800 shrink-0 animate-in">
-          <Search className="w-3 h-3 text-zinc-500" />
+        <div className="h-10 flex items-center gap-2 px-3 bg-zinc-950 border-b-2 border-blue-500/40 shrink-0 animate-in">
+          <Search className="w-3.5 h-3.5 text-blue-400" />
           <input
             ref={searchRef}
             value={search}
             onChange={e => setSearch(e.target.value.toUpperCase())}
-            placeholder="SEARCH TICKER..."
-            className="flex-1 bg-transparent text-xs font-mono text-zinc-200 outline-none placeholder:text-zinc-700 tracking-wider"
+            placeholder="TYPE A TICKER SYMBOL (e.g. AAPL, TSLA, NVDA)..."
+            className="flex-1 bg-transparent text-sm font-mono text-zinc-100 outline-none placeholder:text-zinc-600 tracking-wider"
             spellCheck={false}
           />
-          <span className="text-[9px] text-zinc-600">{filteredAndSorted.length} RESULTS</span>
-          <button onClick={() => { setShowSearch(false); setSearch(''); }} className="text-zinc-600 hover:text-orange-500 transition-colors">
-            <X className="w-3 h-3" />
+          <span className="text-[9px] text-zinc-500 tabular-nums">{filteredAndSorted.length} MATCHES</span>
+          <kbd className="text-[8px] bg-zinc-800 text-zinc-500 px-1.5 py-0.5 rounded border border-zinc-700">ESC</kbd>
+          <button onClick={() => { setShowSearch(false); setSearch(''); }} className="text-zinc-600 hover:text-red-400 transition-colors">
+            <X className="w-3.5 h-3.5" />
           </button>
         </div>
       )}

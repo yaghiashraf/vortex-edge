@@ -214,8 +214,10 @@ export default function Home() {
               <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 bg-indigo-500 rounded-sm"></span> CONF</span>
               <span className="text-zinc-700">|</span>
               <span className="text-zinc-500">{scannerData.length}</span>
-              <button onClick={triggerSearch} className="ml-1 text-zinc-600 hover:text-orange-500 transition-colors" title="Search (/)">
+              <button onClick={triggerSearch} className="ml-2 flex items-center gap-1.5 bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 hover:border-blue-500/50 text-zinc-500 hover:text-blue-400 px-2 py-0.5 rounded transition-all" title="Search ticker">
                 <Search className="w-3 h-3" />
+                <span className="text-[9px] tracking-wide">SEARCH</span>
+                <kbd className="text-[8px] bg-zinc-800 text-zinc-500 px-1 rounded border border-zinc-700">/</kbd>
               </button>
             </div>
           </div>
