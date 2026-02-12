@@ -107,10 +107,10 @@ export default function Home() {
           <div className="h-24 border-t border-zinc-800 mt-2 pt-2">
             <h3 className="text-[10px] font-bold text-zinc-500 mb-1 uppercase">SYSTEM_ALERTS</h3>
             <div className="text-[10px] text-zinc-400 leading-tight space-y-1 font-mono">
-              <p>&gt; MONITORING 100+ TICKERS</p>
-              <p>&gt; VOLATILITY SCAN: ACTIVE</p>
-              <p>&gt; RSI FILTER: ENABLED (14)</p>
-              <p>&gt; TREND FILTER: 20-DAY SMA</p>
+              <p>[+] MONITORING 100+ TICKERS</p>
+              <p>[+] VOLATILITY SCAN: ACTIVE</p>
+              <p>[+] RSI FILTER: ENABLED (14)</p>
+              <p>[+] TREND FILTER: 20-DAY SMA</p>
             </div>
           </div>
         </div>
