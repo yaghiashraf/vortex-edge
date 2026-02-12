@@ -24,7 +24,7 @@ export default function SectorChart({ data, spyChange }: Props) {
     if (active && payload && payload.length) {
       const d = payload[0].payload;
       return (
-        <div className="bg-black border border-orange-500/50 p-2 text-[10px] font-mono shadow-none rounded-none">
+        <div className="bg-black border border-orange-500/50 p-2 text-[10px] font-mono shadow-none rounded-none z-50 pointer-events-none">
           <p className="text-orange-400 font-bold mb-1 uppercase">{d.name} [{d.symbol}]</p>
           <div className="grid grid-cols-2 gap-x-4 gap-y-1">
             <span className="text-zinc-500">REL STR</span>
@@ -43,8 +43,8 @@ export default function SectorChart({ data, spyChange }: Props) {
   };
 
   return (
-    <div className="w-full h-full flex flex-col bg-black">
-      <div className="terminal-header border-none px-0 pb-2 mb-2">
+    <div className="w-full h-full flex flex-col bg-black overflow-hidden relative">
+      <div className="terminal-header border-none px-0 pb-2 mb-2 shrink-0">
         <span>SECTOR RELATIVE STRENGTH (vs SPY {spyChange > 0 ? '+' : ''}{spyChange.toFixed(2)}%)</span>
         <div className="flex gap-2 text-[10px]">
           <span className="text-green-500">LEADERS</span>
@@ -52,25 +52,27 @@ export default function SectorChart({ data, spyChange }: Props) {
         </div>
       </div>
       
-      <div className="flex-1 min-h-0 w-full relative">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={sortedData} margin={{ top: 5, right: 10, left: -25, bottom: 5 }} layout="vertical">
-            <CartesianGrid strokeDasharray="1 1" stroke="#333" horizontal={false} opacity={0.5} />
+      <div className="flex-1 w-full relative min-h-0">
+        <ResponsiveContainer width="99%" height="100%">
+          <BarChart data={sortedData} layout="vertical" margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="1 1" stroke="#333" horizontal={false} opacity={0.3} />
             <XAxis 
               type="number"
               hide={true} 
             />
+            {/* Increased width to 45 and adjusted styling for labels */}
             <YAxis 
               dataKey="symbol" 
               type="category" 
-              tick={{ fill: '#fb923c', fontSize: 10, fontFamily: 'monospace' }} 
-              width={35}
+              tick={{ fill: '#fb923c', fontSize: 10, fontFamily: 'monospace', fontWeight: 'bold' }} 
+              width={45} 
               axisLine={false}
               tickLine={false}
+              dx={-5} // Slight offset to ensure visibility
             />
-            <Tooltip content={<CustomTooltip />} cursor={{ fill: '#ffffff10' }} />
+            <Tooltip content={<CustomTooltip />} cursor={{ fill: '#ffffff10' }} wrapperStyle={{ outline: 'none' }} />
             <ReferenceLine x={0} stroke="#666" strokeWidth={1} />
-            <Bar dataKey="relativeStrength" barSize={12}>
+            <Bar dataKey="relativeStrength" barSize={16} radius={[0, 2, 2, 0]}>
               {sortedData.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={entry.relativeStrength >= 0 ? '#22c55e' : '#ef4444'} />
               ))}

@@ -1,30 +1,33 @@
 // vortex-edge/lib/tickers.ts
 
 export const TICKERS = [
-  // --- MAG 7 & MEGA CAP ---
-  'NVDA', 'TSLA', 'AMD', 'AAPL', 'MSFT', 'AMZN', 'GOOGL', 'META', 'NFLX', 'BRK-B', 'LLY', 'AVGO', 'JPM', 'V', 'TSM',
+  // --- INDICES & ETFS ---
+  'SPY', 'QQQ', 'IWM', 'DIA', 'TLT', 'TQQQ', 'SQQQ', 'SOXL', 'SOXS', 'UVXY', 'ARKK', 'XBI', 'HYG', 'GLD', 'SLV', 'UNG', 'USO', 'FXI', 'KWEB', 'EWZ',
   
-  // --- HIGH GROWTH / BETA ---
-  'PLTR', 'SOFI', 'MARA', 'RIOT', 'COIN', 'MSTR', 'HOOD', 'ROKU', 'DKNG', 'SHOP', 'SQ', 'U', 'RBLX', 'AFRM', 'UPST', 'CVNA', 'NET', 'SNOW', 'DDOG', 'CRWD', 'ZS', 'PANW', 'TTD', 'APP',
+  // --- MAGNIFICENT 7 + 1 ---
+  'NVDA', 'TSLA', 'AMD', 'AAPL', 'MSFT', 'AMZN', 'GOOGL', 'META', 'NFLX',
   
   // --- SEMICONDUCTORS ---
-  'SMCI', 'ARM', 'MU', 'INTC', 'QCOM', 'TXN', 'ADI', 'LRCX', 'AMAT', 'KLAC', 'MRVL',
+  'AVGO', 'TSM', 'ASML', 'LRCX', 'AMAT', 'MU', 'INTC', 'QCOM', 'TXN', 'ADI', 'KLAC', 'MRVL', 'ARM', 'SMCI', 'ON', 'MCHP', 'STM',
   
-  // --- ETFS (LIQUID) ---
-  'SPY', 'QQQ', 'IWM', 'TQQQ', 'SQQQ', 'SOXL', 'SOXS', 'ARKK', 'XBI', 'TLT', 'HYG', 'GLD', 'SLV', 'UNG', 'USO', 'FXI', 'KWEB',
+  // --- SOFTWARE & CLOUD ---
+  'ORCL', 'ADBE', 'CRM', 'IBM', 'NOW', 'INTU', 'UBER', 'ABNB', 'PANW', 'SNOW', 'PLTR', 'CRWD', 'DDOG', 'ZS', 'NET', 'TEAM', 'WDAY', 'ADSK', 'FTNT', 'MDB', 'GTLB',
   
-  // --- FINANCIALS & BANKS ---
-  'BAC', 'WFC', 'C', 'GS', 'MS', 'BLK', 'AXP', 'PYPL', 'V', 'MA',
+  // --- FINANCIALS ---
+  'JPM', 'BAC', 'WFC', 'C', 'GS', 'MS', 'BLK', 'AXP', 'V', 'MA', 'PYPL', 'COF', 'USB', 'PNC', 'SCHW', 'SOFI', 'NU', 'AFRM', 'UPST',
   
-  // --- ENERGY & INDUSTRIAL ---
-  'XOM', 'CVX', 'COP', 'SLB', 'OXY', 'CAT', 'DE', 'GE', 'BA', 'LMT', 'RTX',
+  // --- CRYPTO & BLOCKCHAIN ---
+  'COIN', 'MSTR', 'MARA', 'RIOT', 'CLSK', 'BITF', 'HUT', 'HOOD', 'IBIT',
   
   // --- CONSUMER & RETAIL ---
-  'WMT', 'COST', 'TGT', 'HD', 'LOW', 'NKE', 'SBUX', 'MCD', 'CMG', 'LULU', 'DIS',
+  'WMT', 'COST', 'TGT', 'HD', 'LOW', 'MCD', 'SBUX', 'CMG', 'NKE', 'LULU', 'DIS', 'CMCSA', 'BKNG', 'MAR', 'HLT', 'RCL', 'CCL', 'NCLH',
+  
+  // --- INDUSTRIAL & ENERGY ---
+  'CAT', 'DE', 'BA', 'LMT', 'RTX', 'GE', 'HON', 'MMM', 'UPS', 'FDX', 'XOM', 'CVX', 'COP', 'SLB', 'HAL', 'OXY', 'EOG', 'PXD', 'VLO',
   
   // --- HEALTHCARE ---
-  'UNH', 'JNJ', 'PFE', 'MRK', 'ABBV', 'TMO', 'DHR',
+  'LLY', 'UNH', 'JNJ', 'PFE', 'MRK', 'ABBV', 'TMO', 'DHR', 'AMGN', 'GILD', 'BIIB', 'VRTX', 'REGN', 'ISRG',
   
-  // --- MEME / RETAIL FAVORITES ---
-  'GME', 'AMC', 'CHWY', 'BB', 'NOK'
+  // --- HIGH BETA / GROWTH / MEME ---
+  'GME', 'AMC', 'CHWY', 'ROKU', 'DKNG', 'SQ', 'SHOP', 'U', 'RBLX', 'CVNA', 'LCID', 'RIVN', 'NIO', 'XPEV', 'LI', 'BABA', 'PDD', 'JD', 'BIDU', 'SNAP', 'PINS', 'ETSY'
 ];
