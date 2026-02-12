@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { Activity, BarChart3, Terminal } from 'lucide-react';
+import { Activity, BarChart3, Terminal, Settings, Clock, RefreshCw, AlertTriangle } from 'lucide-react';
 import Image from 'next/image';
 import SectorChart from '@/components/SectorChart';
 import ScannerTable from '@/components/ScannerTable';
@@ -10,18 +10,30 @@ export default function Home() {
   const [sectorData, setSectorData] = useState<any>(null);
   const [scannerData, setScannerData] = useState<any[]>([]);
   const [loadingSectors, setLoadingSectors] = useState(true);
-  const [loadingScanner, setLoadingScanner] = useState(true);
-  const [progress, setProgress] = useState(0);
+  const [loadingScanner, setLoadingScanner] = useState(false);
   
+  // Progress & Stats
+  const [processedCount, setProcessedCount] = useState(0);
+  const [totalCount, setTotalCount] = useState(503); // Approx S&P 500
+  const [startTime, setStartTime] = useState<number>(0);
+  const [etr, setEtr] = useState<string>('--');
+  
+  // Settings
+  const [refreshInterval, setRefreshInterval] = useState(15); // Minutes
+  const [countdown, setCountdown] = useState(refreshInterval * 60);
+  const [showSettings, setShowSettings] = useState(false);
+
   const isScanningRef = useRef(false);
 
-  // Fetch Sectors (Once)
+  // --- Fetch Sectors ---
   const fetchSectors = async () => {
     setLoadingSectors(true);
     try {
       const res = await fetch('/api/market-pulse');
-      const data = await res.json();
-      setSectorData(data);
+      if (res.ok) {
+        const data = await res.json();
+        setSectorData(data);
+      }
     } catch (err) {
       console.error(err);
     } finally {
@@ -29,17 +41,22 @@ export default function Home() {
     }
   };
 
-  // Fetch Scanner (Paginated)
+  // --- Fetch Scanner (Paginated) ---
   const fetchScanner = async () => {
     if (isScanningRef.current) return;
+    
     isScanningRef.current = true;
     setLoadingScanner(true);
-    setScannerData([]); // Clear old data on full refresh
-    setProgress(0);
+    setScannerData([]); 
+    setProcessedCount(0);
+    setEtr('CALC...');
+    
+    const startTs = Date.now();
+    setStartTime(startTs);
 
     let page = 0;
     let hasMore = true;
-    const limit = 20; // Reduced from 50 to avoid Vercel timeouts (10s limit)
+    const limit = 20;
 
     try {
       while (hasMore) {
@@ -52,72 +69,124 @@ export default function Home() {
           setScannerData(prev => [...prev, ...data.opportunities]);
         }
 
+        const scannedSoFar = Math.min((page + 1) * limit, totalCount);
+        setProcessedCount(scannedSoFar);
+
+        // Calculate ETR
+        const elapsed = (Date.now() - startTs) / 1000; // seconds
+        const rate = scannedSoFar / elapsed; // items per second
+        const remaining = totalCount - scannedSoFar;
+        if (rate > 0) {
+          const etrSeconds = Math.ceil(remaining / rate);
+          setEtr(`${etrSeconds}s`);
+        }
+
         hasMore = data.hasMore;
         page++;
-        
-        // Approx progress
-        setProgress(Math.min(100, Math.round((page * limit) / 500 * 100)));
       }
     } catch (err) {
       console.error('Scan failed', err);
     } finally {
       setLoadingScanner(false);
       isScanningRef.current = false;
-      setProgress(100);
+      setEtr('DONE');
+      setProcessedCount(totalCount);
     }
   };
 
   const fetchAll = () => {
+    setCountdown(refreshInterval * 60); // Reset countdown
     fetchSectors();
     fetchScanner();
   };
 
   const [time, setTime] = useState<string>('');
 
+  // Clock & Countdown Effect
   useEffect(() => {
-    fetchAll();
-
-    const clockTimer = setInterval(() => {
+    const timer = setInterval(() => {
       setTime(new Date().toLocaleTimeString());
+      
+      setCountdown(prev => {
+        if (prev <= 1) {
+          fetchAll();
+          return refreshInterval * 60;
+        }
+        return prev - 1;
+      });
     }, 1000);
 
-    const refreshTimer = setInterval(() => {
-      fetchAll();
-    }, 15 * 60 * 1000);
+    return () => clearInterval(timer);
+  }, [refreshInterval]); // Re-run if interval changes
 
-    return () => {
-      clearInterval(clockTimer);
-      clearInterval(refreshTimer);
-    };
+  // Initial Load
+  useEffect(() => {
+    fetchAll();
   }, []);
+
+  const formatCountdown = (secs: number) => {
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return `${m}:${s.toString().padStart(2, '0')}`;
+  };
 
   return (
     <div className="h-screen w-screen bg-black text-orange-500 font-mono overflow-hidden flex flex-col selection:bg-orange-500 selection:text-black">
       {/* HEADER */}
-      <header className="h-10 bg-zinc-950 border-b border-zinc-800 flex items-center justify-between px-4 text-xs uppercase tracking-widest shrink-0 shadow-sm z-50">
+      <header className="h-12 bg-zinc-950 border-b border-zinc-800 flex items-center justify-between px-4 text-xs uppercase tracking-widest shrink-0 shadow-sm z-50 relative">
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-2">
-            <Image src="/logo.svg" alt="Vortex Edge" width={140} height={28} priority />
+            <Image src="/logo.svg" alt="Vortex Edge" width={140} height={28} priority className="h-6 w-auto" />
           </div>
           <span className="text-zinc-600 hidden sm:inline">|</span>
-          <span className="text-zinc-500 hidden sm:inline">
-            SESSION: <span className="text-green-500 font-bold">ACTIVE</span>
-          </span>
-          {loadingScanner && (
-            <span className="text-zinc-500 ml-4 animate-pulse">
-              SCANNING... {progress}%
+          <div className="hidden sm:flex items-center gap-2">
+            <span className="text-zinc-500">SESSION:</span>
+            <span className="text-green-500 font-bold flex items-center gap-1">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+              </span>
+              LIVE
             </span>
-          )}
+          </div>
         </div>
+
         <div className="flex items-center gap-6">
-           <span className="text-zinc-400 font-bold font-mono text-sm tracking-wide bg-zinc-900 px-3 py-1 rounded border border-zinc-800">{time}</span>
+           {/* Auto Refresh Config */}
+           <div className="flex items-center gap-2 bg-zinc-900 rounded px-2 py-1 border border-zinc-800 relative group">
+             <Clock className="w-3 h-3 text-zinc-500" />
+             <span className="text-zinc-300 font-bold">{formatCountdown(countdown)}</span>
+             <button onClick={() => setShowSettings(!showSettings)} className="hover:text-white ml-2">
+               <Settings className="w-3 h-3 text-zinc-600 hover:text-orange-500 transition-colors" />
+             </button>
+             
+             {/* Dropdown */}
+             {showSettings && (
+               <div className="absolute top-full right-0 mt-2 w-32 bg-zinc-900 border border-zinc-700 shadow-xl rounded z-50 flex flex-col">
+                 <div className="px-3 py-2 text-[10px] text-zinc-500 border-b border-zinc-800">REFRESH RATE</div>
+                 {[5, 10, 15, 30].map(mins => (
+                   <button
+                     key={mins}
+                     onClick={() => { setRefreshInterval(mins); setCountdown(mins * 60); setShowSettings(false); }}
+                     className={`text-left px-3 py-2 text-xs hover:bg-zinc-800 ${refreshInterval === mins ? 'text-orange-500 font-bold' : 'text-zinc-400'}`}
+                   >
+                     {mins} MINS
+                   </button>
+                 ))}
+               </div>
+             )}
+           </div>
+
+           <span className="text-zinc-400 font-bold font-mono text-sm tracking-wide">{time}</span>
+           
            <button 
              onClick={fetchAll} 
              disabled={loadingScanner}
-             className="hover:text-white hover:bg-zinc-800 px-2 py-1 rounded transition-colors text-zinc-500 disabled:opacity-50"
-             title="REFRESH DATA"
+             className="bg-orange-600 hover:bg-orange-500 text-black font-bold px-3 py-1 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+             title="FORCE REFRESH"
            >
-             [REFRESH]
+             <RefreshCw className={`w-3 h-3 ${loadingScanner ? 'animate-spin' : ''}`} />
+             RUN
            </button>
         </div>
       </header>
@@ -135,7 +204,8 @@ export default function Home() {
           
           <div className="flex-1 min-h-0 w-full relative overflow-hidden">
              {loadingSectors || !sectorData ? (
-               <div className="absolute inset-0 flex items-center justify-center text-zinc-700 animate-pulse text-xs tracking-widest">
+               <div className="absolute inset-0 flex items-center justify-center text-zinc-700 animate-pulse text-xs tracking-widest flex-col gap-2">
+                 <Activity className="w-6 h-6 animate-bounce opacity-20" />
                  [LOADING_SECTORS...]
                </div>
              ) : (
@@ -149,6 +219,7 @@ export default function Home() {
               <p>[+] UNIVERSE: 500+ S&P ASSETS</p>
               <p>[+] STRATEGY: INSIDE BAR / NR7</p>
               <p>[+] MOMENTUM: RSI(14) & TREND</p>
+              <p>[+] FEED: YAHOO FINANCE V8</p>
             </div>
           </div>
         </div>
@@ -168,26 +239,60 @@ export default function Home() {
             </div>
           </div>
           
-          {/* Table Container - Needs explicit overflow handling */}
           <div className="flex-1 w-full overflow-hidden relative">
              <ScannerTable 
                data={scannerData} 
-               isLoading={scannerData.length === 0 && loadingScanner} 
+               isLoading={false} // We handle loading state in status bar now
              />
+             
+             {/* Center Loading State */}
+             {scannerData.length === 0 && loadingScanner && (
+               <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 z-20">
+                 <div className="text-orange-500 font-mono text-sm tracking-wide animate-pulse mb-2">
+                   [+] INITIALIZING SCANNER...
+                 </div>
+               </div>
+             )}
           </div>
         </div>
-
       </div>
 
-      {/* FOOTER */}
-      <footer className="h-6 bg-zinc-950 border-t border-zinc-900 flex items-center justify-between px-4 text-[10px] text-zinc-600 shrink-0 select-none">
-        <div className="flex items-center gap-6">
-          <span>USER: TRADER_01</span>
-          <span>MODE: LIVE</span>
+      {/* STATUS BAR FOOTER */}
+      <footer className="h-8 bg-zinc-950 border-t border-zinc-800 flex items-center justify-between px-4 text-[10px] font-mono shrink-0 select-none z-50">
+        <div className="flex items-center gap-6 w-full">
+          
+          {/* Progress Bar Container */}
+          <div className="flex items-center gap-3 flex-1 max-w-md">
+            <span className="text-zinc-500 w-16">PROGRESS:</span>
+            <div className="flex-1 h-2 bg-zinc-900 rounded-full overflow-hidden border border-zinc-800 relative">
+              <div 
+                className="absolute top-0 left-0 h-full bg-orange-600 transition-all duration-300 ease-out"
+                style={{ width: `${(processedCount / totalCount) * 100}%` }}
+              ></div>
+            </div>
+            <span className="text-zinc-300 w-12 text-right">{Math.round((processedCount / totalCount) * 100)}%</span>
+          </div>
+
+          <div className="h-4 w-px bg-zinc-800"></div>
+
+          {/* Stats */}
+          <div className="flex items-center gap-6 text-zinc-400">
+            <span>PROCESSED: <span className="text-zinc-200">{processedCount}</span>/{totalCount}</span>
+            <span>ETR: <span className="text-zinc-200">{etr}</span></span>
+            {loadingScanner ? (
+               <span className="text-orange-500 animate-pulse font-bold">SCANNING...</span>
+            ) : (
+               <span className="text-green-500 font-bold">IDLE</span>
+            )}
+          </div>
+
         </div>
-        <a href="https://vortexcapitalgroup.com" target="_blank" className="hover:text-orange-500 transition-colors uppercase tracking-widest font-bold flex items-center gap-2">
-          VORTEX CAPITAL GROUP
-        </a>
+
+        <div className="flex items-center gap-4">
+          <a href="https://vortexcapitalgroup.com" target="_blank" className="hover:text-orange-500 transition-colors uppercase tracking-widest font-bold text-zinc-600">
+            VORTEX CAPITAL GROUP
+          </a>
+        </div>
       </footer>
     </div>
   );

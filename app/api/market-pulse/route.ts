@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { fetchYahooData } from '@/lib/yahoo';
 
-// Keep the same list, just to be consistent
 const SECTORS = [
   { symbol: 'XLK', name: 'Technology' },
   { symbol: 'XLF', name: 'Financials' },
@@ -19,7 +18,11 @@ const SECTORS = [
 export async function GET() {
   try {
     const allSymbols = [...SECTORS.map(s => s.symbol), 'SPY'];
-    const quotes = await Promise.all(allSymbols.map(s => fetchYahooData(s)));
+    
+    // Use Promise.allSettled to ensure one failure doesn't break the whole dashboard
+    const results = await Promise.allSettled(allSymbols.map(s => fetchYahooData(s)));
+    
+    const quotes = results.map(r => r.status === 'fulfilled' ? r.value : null);
     
     const spyQuote = quotes.find(q => q?.symbol === 'SPY');
     const spyChange = spyQuote?.change || 0;
