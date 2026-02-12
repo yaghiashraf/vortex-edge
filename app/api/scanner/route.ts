@@ -2,7 +2,7 @@
 import { NextResponse } from 'next/server';
 import { fetchYahooData } from '@/lib/yahoo';
 import { TICKERS } from '@/lib/tickers';
-import { calculateRSI } from '@/lib/indicators';
+import { calculateRSI, calculateSMA, calculateATR } from '@/lib/indicators';
 
 interface Candle {
   date: Date;
@@ -49,17 +49,29 @@ async function fetchInChunks(tickers: string[], chunkSize: number) {
         const lastCandle = history[history.length - 1];
         const prevCandle = history[history.length - 2];
         const closePrices = history.map((c: Candle) => c.close);
+        const volumeArray = history.map((c: Candle) => c.volume);
         
-        const rsi = calculateRSI(closePrices, 14); // Calculate RSI (14)
+        // Calculate Technicals
+        const rsi = calculateRSI(closePrices, 14); // RSI(14)
+        const atr = calculateATR(history, 14);     // ATR(14)
+        const avgVol = calculateSMA(volumeArray.slice(0, -1), 14); // SMA of previous 14 days volume (exclude today)
         
+        // Relative Volume (Current vs Avg)
+        const rvol = avgVol && avgVol > 0 ? (data.volume / avgVol) : 0;
+
         const insideBar = isInsideBar(lastCandle, prevCandle);
         const nr7 = isNR7(history);
+        
+        // Trend Check (Price > 20d ago)
+        // If history < 20, just use first avail
+        const trendLookback = Math.min(20, closePrices.length - 1);
+        const trend = closePrices[closePrices.length - 1] > closePrices[closePrices.length - trendLookback] ? 'Up' : 'Down';
 
-        // Filter: Only return if there is a Setup OR if RSI is Extreme
         const isRSIHigh = rsi && rsi > 70;
         const isRSILow = rsi && rsi < 30;
 
-        if (insideBar || nr7 || isRSIHigh || isRSILow) {
+        // Only return if setup OR high RVOL OR extreme RSI
+        if (insideBar || nr7 || isRSIHigh || isRSILow || rvol > 1.5) {
           return {
             symbol,
             price: data.price,
@@ -68,7 +80,9 @@ async function fetchInChunks(tickers: string[], chunkSize: number) {
             isNR7: nr7,
             volume: data.volume,
             rsi: rsi ? parseFloat(rsi.toFixed(2)) : null,
-            trend: closePrices[closePrices.length - 1] > closePrices[closePrices.length - 20] ? 'Up' : 'Down' // Simple Trend Check (Price > 20d ago)
+            trend: trend,
+            rvol: parseFloat(rvol.toFixed(2)),
+            atr: atr ? parseFloat(atr.toFixed(2)) : null
           };
         }
         return null;
@@ -86,7 +100,6 @@ async function fetchInChunks(tickers: string[], chunkSize: number) {
 
 export async function GET() {
   try {
-    // Process 100 tickers in chunks of 10 to avoid 429 errors
     const rawResults = await fetchInChunks(TICKERS, 10);
     const opportunities = rawResults.filter(r => r !== null);
 

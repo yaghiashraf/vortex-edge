@@ -43,15 +43,21 @@ export function calculateRSI(closePrices: number[], period: number = 14): number
 }
 
 /**
- * Calculates the Simple Moving Average (SMA).
- * @param closePrices Array of closing prices.
- * @param period Lookback period (default 20).
+ * Calculates the Simple Moving Average (SMA) of an array.
+ * @param values Array of numbers (prices or volumes).
+ * @param period Lookback period.
  */
-export function calculateSMA(closePrices: number[], period: number = 20): number | null {
-  if (closePrices.length < period) return null;
+export function calculateSMA(values: number[], period: number): number | null {
+  if (values.length < period) return null;
 
   // We analyze the END of the array (most recent)
-  const slice = closePrices.slice(-period);
+  // But wait, if we want SMA of the *previous* N days to compare with today?
+  // Usually RVOL = Today / Avg(Previous 20).
+  // So we take slice(-period - 1, -1) if we want strictly previous.
+  // Or just slice(-period) if we want rolling.
+  // Let's use the last `period` complete candles.
+  
+  const slice = values.slice(-period);
   const sum = slice.reduce((acc, val) => acc + val, 0);
   return sum / period;
 }
