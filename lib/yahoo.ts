@@ -1,10 +1,10 @@
 // vortex-edge/lib/yahoo.ts
 
-export async function fetchYahooData(symbol: string) {
+export async function fetchYahooData(symbol: string, range: string = '1mo') {
   // Try query2 first, then query1
   const endpoints = [
-    `https://query2.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=5d`, // Reduced range for speed
-    `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=5d`
+    `https://query2.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=${range}`,
+    `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=${range}`
   ];
 
   const userAgents = [
@@ -17,7 +17,7 @@ export async function fetchYahooData(symbol: string) {
     try {
       const ua = userAgents[Math.floor(Math.random() * userAgents.length)];
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 2000); // 2s timeout
+      const timeoutId = setTimeout(() => controller.abort(), 4000); // 4s timeout
 
       const res = await fetch(url, {
         headers: {

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { fetchCompositeQuote } from '@/lib/providers';
+import { fetchYahooData } from '@/lib/yahoo';
 
 const SECTORS = [
   { symbol: 'XLK', name: 'Technology' },
@@ -17,46 +17,40 @@ const SECTORS = [
 
 export async function GET() {
   try {
-    // Prioritize SPY first to ensure we have a baseline
-    const allSymbols = ['SPY', ...SECTORS.map(s => s.symbol)];
-    
-    const results = [];
-    for (const symbol of allSymbols) {
-      const data = await fetchCompositeQuote(symbol);
-      results.push(data);
-      // 100ms delay to balance speed vs rate limits
-      await new Promise(resolve => setTimeout(resolve, 100));
-    }
-    
-    const quotes = results.filter(q => q !== null);
-    
-    const spyQuote: any = quotes.find((q: any) => q.symbol === 'SPY');
-    const spyChange = spyQuote?.change || 0;
+    // Fetch SPY first to ensure we have a baseline
+    const spyData = await fetchYahooData('SPY', '5d');
+    const spyChange = spyData?.change || 0;
 
-    const data = SECTORS.map(sector => {
-      const quote: any = quotes.find((q: any) => q.symbol === sector.symbol);
-      
-      const change = quote?.change || 0;
-      const price = quote?.price || 0;
-      
-      return {
-        ...sector,
-        price,
-        change,
-        relativeStrength: change - spyChange,
-        error: !quote
-      };
+    // Fetch all sectors concurrently from the SAME source for consistency
+    const sectorResults = await Promise.all(
+      SECTORS.map(async (sector) => {
+        const data = await fetchYahooData(sector.symbol, '5d');
+        return { sector, data };
+      })
+    );
+
+    const sectors = sectorResults
+      .map(({ sector, data }) => {
+        const change = data?.change || 0;
+        const price = data?.price || 0;
+
+        return {
+          ...sector,
+          price,
+          change,
+          relativeStrength: change - spyChange,
+          error: !data,
+        };
+      })
+      .filter(d => !d.error && d.price > 0);
+
+    sectors.sort((a, b) => b.relativeStrength - a.relativeStrength);
+
+    return NextResponse.json({
+      spyChange,
+      sectors,
+      lastUpdated: new Date().toISOString(),
     });
-
-    const validData = data.filter(d => !d.error && d.price > 0);
-    validData.sort((a, b) => b.relativeStrength - a.relativeStrength);
-
-    return NextResponse.json({ 
-      spyChange, 
-      sectors: validData,
-      lastUpdated: new Date().toISOString()
-    });
-
   } catch (error) {
     console.error('Error fetching market pulse:', error);
     return NextResponse.json({ error: 'Failed to fetch market data' }, { status: 500 });

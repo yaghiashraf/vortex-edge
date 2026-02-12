@@ -43,7 +43,7 @@ async function fetchInChunks(tickers: string[], chunkSize: number) {
       try {
         const data = await fetchYahooData(symbol);
         
-        if (!data || !data.candles || data.candles.length < 20) return null;
+        if (!data || !data.candles || data.candles.length < 5) return null;
 
         const history = data.candles;
         const lastCandle = history[history.length - 1];
@@ -100,6 +100,8 @@ async function fetchInChunks(tickers: string[], chunkSize: number) {
   }
   return results;
 }
+
+export const maxDuration = 30;
 
 export async function GET(req: NextRequest) {
   try {
