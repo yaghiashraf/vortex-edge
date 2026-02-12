@@ -36,8 +36,18 @@ export default function Home() {
     }
   };
 
+  const [time, setTime] = useState<string>('');
+
   useEffect(() => {
+    // Initial fetch
     fetchData();
+
+    // Live Clock
+    const timer = setInterval(() => {
+      setTime(new Date().toLocaleTimeString());
+    }, 1000);
+
+    return () => clearInterval(timer);
   }, []);
 
   return (
@@ -54,7 +64,7 @@ export default function Home() {
           <span className="text-zinc-400">DATA: <span className="text-blue-400">YAHOO_FINANCE_STREAM</span></span>
         </div>
         <div className="flex items-center gap-4">
-           <span className="text-zinc-500">{lastUpdated || '--:--:--'}</span>
+           <span className="text-zinc-500 font-bold">{time}</span>
            <button 
              onClick={fetchData} 
              className="hover:text-white transition-colors"
