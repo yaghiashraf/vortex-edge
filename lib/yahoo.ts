@@ -2,55 +2,48 @@
 
 export async function fetchYahooData(symbol: string) {
   try {
-    // Attempt 1: Standard v8 chart
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=15d`;
+    // Switch to query2, sometimes less strict
+    const url = `https://query2.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=20d`;
     
-    // Sometimes query2 works better
-    // const url2 = `https://query2.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=15d`;
+    // Randomize User-Agent slightly to avoid identical footprint
+    const userAgents = [
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.107 Safari/537.36'
+    ];
+    const ua = userAgents[Math.floor(Math.random() * userAgents.length)];
 
-    // Headers mimicking a Chrome browser
-    const headers = {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-      'Accept': '*/*',
-      'Accept-Language': 'en-US,en;q=0.9',
-      'Connection': 'keep-alive',
-      'Sec-Fetch-Dest': 'empty',
-      'Sec-Fetch-Mode': 'cors',
-      'Sec-Fetch-Site': 'cross-site',
-    };
-
-    const res = await fetch(url, { headers, next: { revalidate: 60 } });
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent': ua,
+        'Accept': '*/*',
+        'Connection': 'keep-alive'
+      },
+      next: { revalidate: 300 } // Cache for 5 min to avoid hammering
+    });
 
     if (!res.ok) {
-      console.warn(`Yahoo fetch failed for ${symbol} with status ${res.status}`);
+      // console.warn(`Yahoo fetch failed for ${symbol}: ${res.status}`);
       return null;
     }
 
     const json = await res.json();
     const result = json.chart?.result?.[0];
 
-    if (!result) {
-      console.warn(`Yahoo returned empty result for ${symbol}`);
-      return null;
-    }
+    if (!result) return null;
 
     const meta = result.meta;
     const timestamps = result.timestamp;
     const quote = result.indicators.quote[0];
 
-    if (!timestamps || !quote || !quote.close) {
-       console.warn(`Yahoo returned incomplete data for ${symbol}`);
-       return null;
-    }
+    if (!timestamps || !quote || !quote.close) return null;
 
-    // Current Quote Data
     const currentPrice = meta.regularMarketPrice;
     const previousClose = meta.chartPreviousClose;
     const change = currentPrice - previousClose;
     const changePercent = (change / previousClose) * 100;
     const volume = meta.regularMarketVolume;
 
-    // Daily Candles processing
     const candles = timestamps.map((ts: number, i: number) => ({
       date: new Date(ts * 1000),
       open: quote.open[i],
@@ -58,9 +51,8 @@ export async function fetchYahooData(symbol: string) {
       low: quote.low[i],
       close: quote.close[i],
       volume: quote.volume[i],
-    })).filter((c: any) => c.close !== null && c.high !== null && c.low !== null); 
+    })).filter((c: any) => c.close !== null);
 
-    // If candles array is empty
     if (candles.length === 0) return null;
 
     return {
@@ -71,7 +63,6 @@ export async function fetchYahooData(symbol: string) {
       candles
     };
   } catch (err) {
-    console.error(`Error fetching ${symbol}:`, err);
     return null;
   }
 }

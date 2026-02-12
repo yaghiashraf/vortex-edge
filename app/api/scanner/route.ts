@@ -43,7 +43,7 @@ async function fetchInChunks(tickers: string[], chunkSize: number) {
       try {
         const data = await fetchYahooData(symbol);
         
-        if (!data || !data.candles || data.candles.length < 20) return null;
+        if (!data || !data.candles || data.candles.length < 15) return null;
 
         const history = data.candles;
         const lastCandle = history[history.length - 1];
@@ -51,27 +51,28 @@ async function fetchInChunks(tickers: string[], chunkSize: number) {
         const closePrices = history.map((c: Candle) => c.close);
         const volumeArray = history.map((c: Candle) => c.volume);
         
-        // Calculate Technicals
-        const rsi = calculateRSI(closePrices, 14); // RSI(14)
-        const atr = calculateATR(history, 14);     // ATR(14)
-        const avgVol = calculateSMA(volumeArray.slice(0, -1), 14); // SMA of previous 14 days volume (exclude today)
-        
-        // Relative Volume
+        const rsi = calculateRSI(closePrices, 14); 
+        const atr = calculateATR(history, 14);     
+        const avgVol = calculateSMA(volumeArray.slice(0, -1), 14); 
         const rvol = avgVol && avgVol > 0 ? (data.volume / avgVol) : 0;
 
         const insideBar = isInsideBar(lastCandle, prevCandle);
         const nr7 = isNR7(history);
         
-        // Trend Check (Price > 20d ago)
         const trendLookback = Math.min(20, closePrices.length - 1);
         const trend = closePrices[closePrices.length - 1] > closePrices[closePrices.length - trendLookback] ? 'Up' : 'Down';
 
         const isRSIHigh = rsi && rsi > 70;
         const isRSILow = rsi && rsi < 30;
 
-        // Return if setup OR high RVOL OR extreme RSI
-        // Also ensure price > 5 (filter penny stocks if any)
-        if (data.price > 5 && (insideBar || nr7 || isRSIHigh || isRSILow || rvol > 1.5)) {
+        // LOOSENED FILTERS:
+        // 1. Setup (Inside/NR7)
+        // 2. Extreme RSI
+        // 3. RVOL > 1.2 (Lowered from 1.5)
+        // 4. Large Cap (> 50 price) + Trend Up (Just to show *something* good)
+        const isGoodTrend = trend === 'Up' && data.price > 50;
+
+        if (data.price > 5 && (insideBar || nr7 || isRSIHigh || isRSILow || rvol > 1.2 || isGoodTrend)) {
           return {
             symbol,
             price: data.price,
@@ -87,13 +88,12 @@ async function fetchInChunks(tickers: string[], chunkSize: number) {
         }
         return null;
       } catch (err) {
-        // console.error(`Failed to scan ${symbol}`, err);
         return null;
       }
     }));
     results.push(...chunkResults);
-    // Tiny delay to be nice to API
-    await new Promise(resolve => setTimeout(resolve, 50));
+    // Increased delay to 100ms
+    await new Promise(resolve => setTimeout(resolve, 100));
   }
   return results;
 }
@@ -102,13 +102,11 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const page = parseInt(searchParams.get('page') || '0', 10);
-    const limit = parseInt(searchParams.get('limit') || '50', 10); // Process 50 per request
+    const limit = parseInt(searchParams.get('limit') || '20', 10);
 
-    // Pagination logic
     const start = page * limit;
     const end = start + limit;
     
-    // Safety check
     if (start >= TICKERS.length) {
       return NextResponse.json({ 
         opportunities: [],
@@ -121,7 +119,7 @@ export async function GET(req: NextRequest) {
     const currentBatch = TICKERS.slice(start, end);
     const hasMore = end < TICKERS.length;
 
-    // Process this batch (chunks of 5 to avoid Rate Limits)
+    // Concurrency 5
     const rawResults = await fetchInChunks(currentBatch, 5);
     const opportunities = rawResults.filter(r => r !== null);
 
