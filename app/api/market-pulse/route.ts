@@ -71,7 +71,7 @@ export async function GET() {
     // Better to filter out completely failed ones so they don't show misleading "0%"
     // Actually, showing 0% RS is confusing.
     
-    const validData = data.filter(d => !d.error);
+    const validData = data.filter((d: any) => !d.error);
 
     validData.sort((a, b) => b.relativeStrength - a.relativeStrength);
 
