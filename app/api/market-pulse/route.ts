@@ -33,21 +33,23 @@ export async function GET() {
       }
     }
 
-    // Fetch sectors in small batches of 3 to avoid Yahoo rate limits
+    // Fetch sectors sequentially to avoid Yahoo rate limits on Vercel IPs
     const allResults: { sector: typeof SECTORS[0]; data: any }[] = [];
 
-    for (let i = 0; i < SECTORS.length; i += 3) {
-      const batch = SECTORS.slice(i, i + 3);
-      const batchResults = await Promise.all(
-        batch.map(async (sector) => {
-          const data = await fetchYahooData(sector.symbol, '1mo');
-          return { sector, data };
-        })
-      );
-      allResults.push(...batchResults);
+    for (const sector of SECTORS) {
+      const data = await fetchYahooData(sector.symbol, '1mo');
+      allResults.push({ sector, data });
+      // Delay between each fetch to stay under rate limits
+      await new Promise(r => setTimeout(r, 200));
+    }
 
-      // Delay between batches to avoid rate limiting
-      if (i + 3 < SECTORS.length) {
+    // Retry any that failed
+    const failed = allResults.filter(r => !r.data);
+    if (failed.length > 0) {
+      await new Promise(r => setTimeout(r, 1000));
+      for (const item of failed) {
+        const data = await fetchYahooData(item.sector.symbol, '1mo');
+        if (data) item.data = data;
         await new Promise(r => setTimeout(r, 300));
       }
     }
