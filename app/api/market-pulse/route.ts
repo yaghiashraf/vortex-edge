@@ -50,6 +50,6 @@ export async function GET() {
 
   } catch (error) {
     console.error('Error fetching market pulse:', error);
-    return NextResponse.json({ error: 'Failed to fetch market data' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to fetch market data', details: String(error) }, { status: 500 });
   }
 }

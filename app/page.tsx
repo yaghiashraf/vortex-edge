@@ -99,8 +99,12 @@ export default function Home() {
             <h2 className="text-xl font-semibold text-white">Sector Relative Strength</h2>
           </div>
           
-          {loadingSectors || !sectorData ? (
+          {loadingSectors ? (
             <div className="w-full h-[350px] bg-slate-900/50 rounded-lg border border-slate-800 animate-pulse" />
+          ) : sectorData?.error || !sectorData?.sectors ? (
+            <div className="w-full h-[350px] bg-slate-900/50 rounded-lg border border-slate-800 flex items-center justify-center text-red-400">
+              Unable to load market data. Please try again later.
+            </div>
           ) : (
             <SectorChart data={sectorData.sectors} spyChange={sectorData.spyChange} />
           )}
