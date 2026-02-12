@@ -216,7 +216,6 @@ export default function Home() {
               <p>[+] UNIVERSE: 500+ S&P ASSETS</p>
               <p>[+] STRATEGY: INSIDE BAR / NR7</p>
               <p>[+] MOMENTUM: Z-SCORE / RSI / RVOL</p>
-              <p>[+] FEED: YAHOO FINANCE V8</p>
             </div>
           </div>
         </div>
