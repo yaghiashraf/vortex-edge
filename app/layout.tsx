@@ -17,7 +17,9 @@ export const metadata: Metadata = {
   title: "VORTEX TERMINAL",
   description: "Professional Market Intelligence | Vortex Capital Group",
   icons: {
-    icon: '/favicon.ico',
+    icon: '/icon.svg',
+    shortcut: '/icon.svg',
+    apple: '/icon.svg',
   },
 };
 

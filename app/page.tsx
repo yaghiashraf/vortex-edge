@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { Activity, BarChart3, Terminal } from 'lucide-react';
+import Image from 'next/image';
 import SectorChart from '@/components/SectorChart';
 import ScannerTable from '@/components/ScannerTable';
 
@@ -95,9 +96,9 @@ export default function Home() {
       {/* HEADER */}
       <header className="h-10 bg-zinc-950 border-b border-zinc-800 flex items-center justify-between px-4 text-xs uppercase tracking-widest shrink-0 shadow-sm z-50">
         <div className="flex items-center gap-6">
-          <span className="flex items-center gap-2 font-black text-orange-500 text-sm">
-            <Terminal className="w-4 h-4" /> VORTEX_TERMINAL_V1
-          </span>
+          <div className="flex items-center gap-2">
+            <Image src="/logo.svg" alt="Vortex Edge" width={140} height={28} priority />
+          </div>
           <span className="text-zinc-600 hidden sm:inline">|</span>
           <span className="text-zinc-500 hidden sm:inline">
             SESSION: <span className="text-green-500 font-bold">ACTIVE</span>
@@ -184,8 +185,8 @@ export default function Home() {
           <span>USER: TRADER_01</span>
           <span>MODE: LIVE</span>
         </div>
-        <a href="https://vortexcapitalgroup.com" target="_blank" className="hover:text-orange-500 transition-colors uppercase tracking-widest font-bold">
-          VORTEX_CAPITAL_GROUP
+        <a href="https://vortexcapitalgroup.com" target="_blank" className="hover:text-orange-500 transition-colors uppercase tracking-widest font-bold flex items-center gap-2">
+          VORTEX CAPITAL GROUP
         </a>
       </footer>
     </div>
