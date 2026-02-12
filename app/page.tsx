@@ -38,7 +38,7 @@ export default function Home() {
 
     let page = 0;
     let hasMore = true;
-    const limit = 50; // Process 50 tickers per API call
+    const limit = 20; // Reduced from 50 to avoid Vercel timeouts (10s limit)
 
     try {
       while (hasMore) {

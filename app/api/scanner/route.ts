@@ -121,8 +121,8 @@ export async function GET(req: NextRequest) {
     const currentBatch = TICKERS.slice(start, end);
     const hasMore = end < TICKERS.length;
 
-    // Process this batch (chunks of 10 inside fetchInChunks)
-    const rawResults = await fetchInChunks(currentBatch, 10);
+    // Process this batch (chunks of 5 to avoid Rate Limits)
+    const rawResults = await fetchInChunks(currentBatch, 5);
     const opportunities = rawResults.filter(r => r !== null);
 
     return NextResponse.json({ 
